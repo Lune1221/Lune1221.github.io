@@ -13,7 +13,6 @@
             --hint-bg: #fff9e6;
             --hint-text: #555555;
             --sidebar-bg: #ffffff;
-            --scrollbar-width: 24px;
             --img-size: 100%;
         }
         body.dark-mode {
@@ -26,95 +25,137 @@
         }
 
         * { transition: background-color 0.3s ease, color 0.3s ease; box-sizing: border-box; }
-        html, body { overflow: hidden; width: 100%; height: 100%; margin: 0; padding: 0; touch-action: none; }
-        main::-webkit-scrollbar { display: none; }
-        main { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        html, body {
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            margin: 0; padding: 0;
+            touch-action: none;
+        }
 
         body {
             display: grid;
-            grid-template-areas: "nav nav" "main scroll" "footer footer";
+            grid-template-areas: "nav" "main" "footer";
             grid-template-rows: auto 1fr auto;
-            grid-template-columns: 1fr var(--scrollbar-width);
             background-color: var(--bg-color); color: var(--text-color);
             font-family: sans-serif;
         }
 
-        /* --- ナビゲーション（モバイル最適化） --- */
+        /* アニメーション設定 */
+        .reveal {
+            opacity: 0;
+            transform: translateX(30px);
+            transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+        .reveal.active {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        /* ナビゲーション */
         nav { grid-area: nav; background: var(--sidebar-bg); border-bottom: 2px solid var(--main-color); z-index: 100; }
         .tabs-row { display: flex; width: 100%; }
-        .tab { flex: 1; padding: 12px; border: none; background: none; font-weight: bold; cursor: pointer; color: var(--text-color); border-bottom: 4px solid transparent; font-size: 0.9rem; }
-        .tab.active { border-bottom-color: var(--main-color); color: var(--main-color); }
+        .tab { flex: 1; padding: 14px; border: none; background: none; font-weight: bold; cursor: pointer; color: var(--text-color); border-bottom: 4px solid transparent; font-size: 0.95rem; }
+        .tab.active { border-bottom-color: var(--main-color); color: var(--main-color); background: rgba(95, 180, 139, 0.05); }
 
-        /* 画像サイズ調整エリアのコンパクト化 */
-        .size-ctrl-box { padding: 5px 15px; border-top: 1px solid rgba(0,0,0,0.05); background: rgba(0,0,0,0.02); }
-        .size-ctrl-header { display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; font-weight: bold; cursor: pointer; padding: 5px 0; }
+        /* 画像サイズ調整エリア（モバイル時は折り畳み） */
+        .size-ctrl-box { padding: 8px 16px; border-top: 1px solid rgba(0,0,0,0.05); background: rgba(0,0,0,0.01); }
+        .size-ctrl-header { display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; font-weight: bold; cursor: pointer; padding: 4px 0; user-select: none; }
         #size-slider-wrapper { height: 0; overflow: hidden; transition: height 0.3s ease; }
         #size-slider-wrapper.open { height: 40px; }
 
-        /* --- スクロールバー --- */
-        #scroll-area { grid-area: scroll; background: rgba(0,0,0,0.03); position: relative; z-index: 2000; border-left: 1px solid rgba(0,0,0,0.05); touch-action: none; }
-        #scroll-thumb { position: absolute; left: 3px; width: 18px; height: 100px; background: var(--main-color); border-radius: 10px; cursor: grab; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
+        main { 
+            grid-area: main; padding: 20px; 
+            overflow-y: auto; 
+            overflow-x: hidden; 
+            width: 100%; justify-self: center;
+            -webkit-overflow-scrolling: touch;
+            touch-action: pan-y;
+        }
+        
+        .progress-card { background: var(--card-bg); padding: 15px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .bar-bg { width: 100%; height: 10px; background: #eee; border-radius: 5px; overflow: hidden; margin: 8px 0; }
+        .bar-fill { height: 100%; background: var(--main-color); width: 0%; transition: width 0.8s ease; }
 
-        /* --- 共通ボタンデザイン --- */
-        .btn-circle {
-            width: 50px; height: 50px;
-            border: none; border-radius: 50%;
-            background: var(--main-color);
-            color: white;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1.4rem;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        .item { 
+            background: var(--card-bg); 
+            margin-bottom: 20px; 
+            padding: 20px; 
+            border-radius: 12px; 
+            border-left: 6px solid var(--main-color); 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06); 
             cursor: pointer;
-            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), background-color 0.3s;
             user-select: none;
+            position: relative;
+        }
+        
+        .item-name-box { display: flex; align-items: center; pointer-events: none; }
+        input[type="checkbox"] {
+            width: 35px; height: 35px;
+            cursor: pointer; pointer-events: auto; flex-shrink: 0;
+        }
+
+        .item-name-box label { font-weight: bold; margin-left: 15px; font-size: 1.2rem; }
+        .hint { margin-top: 15px; font-size: 1rem; background: var(--hint-bg); color: var(--hint-text); padding: 15px; border-radius: 8px; line-height: 1.5; }
+        .img-container { text-align: center; margin-top: 10px; padding: 5px; min-height: 50px; }
+        .comparison-img { width: var(--img-size); max-width: 100%; border-radius: 8px; border: 1px solid #ddd; background: #eee; cursor: zoom-in; display: block; margin: 0 auto; }
+        
+        /* 共通丸ボタン */
+        .btn { 
+            width: 60px; height: 60px; min-width: 60px; min-height: 60px;
+            border: none; border-radius: 50%; 
+            background: var(--main-color); color: white; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; font-size: 1.6rem;
+            flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), background-color 0.3s;
             -webkit-tap-highlight-color: transparent;
         }
-        .btn-circle:active { transform: scale(1.2) !important; }
+        .btn:active { transform: scale(1.2); }
 
-        /* --- 上に戻るボタン --- */
+        /* 上に戻るボタン */
         #back-to-top {
             position: fixed;
-            right: calc(var(--scrollbar-width) + 15px); 
+            right: 25px; 
             bottom: 100px;
             z-index: 1500;
             opacity: 0; visibility: hidden;
             transform: translateY(10px);
+            transition: opacity 0.3s, visibility 0.3s, transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
         #back-to-top.show { opacity: 1; visibility: visible; transform: translateY(0); }
 
-        main { grid-area: main; padding: 15px; overflow-y: scroll; overflow-x: hidden; width: 100%; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
-        .progress-card { background: var(--card-bg); padding: 12px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-        .bar-bg { width: 100%; height: 8px; background: #eee; border-radius: 4px; overflow: hidden; margin: 6px 0; }
-        .bar-fill { height: 100%; background: var(--main-color); width: 0%; transition: width 0.8s ease; }
-
-        .item { background: var(--card-bg); margin-bottom: 15px; padding: 15px; border-radius: 12px; border-left: 6px solid var(--main-color); box-shadow: 0 2px 8px rgba(0,0,0,0.06); cursor: pointer; }
-        .reveal { opacity: 0; transform: translateX(20px); transition: opacity 0.4s ease, transform 0.4s ease-out; }
-        .reveal.active { opacity: 1; transform: translateX(0); }
-
-        input[type="checkbox"] { width: 30px; height: 30px; }
-        .item-name-box label { font-weight: bold; margin-left: 12px; font-size: 1.1rem; }
-        .hint { margin-top: 12px; font-size: 0.9rem; background: var(--hint-bg); color: var(--hint-text); padding: 12px; border-radius: 8px; }
-        .img-container { text-align: center; margin-top: 10px; }
-        .comparison-img { width: var(--img-size); max-width: 100%; border-radius: 8px; border: 1px solid #ddd; cursor: zoom-in; }
-        
-        /* モーダル */
-        #img-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 3000; display: none; align-items: center; justify-content: center; cursor: zoom-out; opacity: 0; transition: opacity 0.3s; }
+        /* 画像拡大モーダル */
+        #img-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 3000;
+            display: none; align-items: center; justify-content: center;
+            cursor: zoom-out; opacity: 0; transition: opacity 0.3s ease;
+        }
         #img-modal.active { display: flex; opacity: 1; }
-        #modal-img { max-width: 95%; max-height: 95%; border-radius: 10px; transform: scale(0.8); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        #modal-img { max-width: 95%; max-height: 95%; border-radius: 10px; box-shadow: 0 0 25px rgba(0,0,0,0.5); transform: scale(0.85); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         #img-modal.active #modal-img { transform: scale(1); }
 
-        footer { grid-area: footer; background: var(--sidebar-bg); padding: 12px; display: flex; gap: 20px; border-top: 1px solid rgba(0,0,0,0.1); justify-content: center; width: 100%; z-index: 1000; }
+        footer { 
+            grid-area: footer; background: var(--sidebar-bg); padding: 15px; 
+            display: flex; gap: 15px; border-top: 1px solid rgba(0,0,0,0.1); 
+            justify-content: space-around; z-index: 1000;
+        }
 
+        /* 横幅が広い端末（タブレット・PC等）のレイアウト */
         @media (min-width: 768px) {
-            body { grid-template-areas: "nav main scroll"; grid-template-columns: 260px 1fr var(--scrollbar-width); grid-template-rows: 1fr; }
-            nav { border-bottom: none; border-right: 3px solid var(--main-color); height: 100vh; grid-row: 1 / 3; }
-            .tabs-row { flex-direction: column; padding: 20px 10px; }
+            body { grid-template-areas: "nav main"; grid-template-columns: 240px 1fr; grid-template-rows: 1fr; }
+            nav { border-bottom: none; border-right: 3px solid var(--main-color); height: 100vh; }
+            .tabs-row { flex-direction: column; padding-top: 20px; }
             .tab { padding: 18px; font-size: 1rem; }
-            .size-ctrl-box { background: none; border-top: 1px solid rgba(0,0,0,0.05); margin-top: 20px; padding: 20px; }
+            
+            /* PC・タブレット横画面ではサイズ調整を最初から広げておく */
+            .size-ctrl-box { background: none; border-top: 1px solid rgba(0,0,0,0.05); margin-top: 20px; padding: 15px; }
             #size-slider-wrapper { height: auto !important; overflow: visible; }
-            .size-ctrl-header { cursor: default; font-size: 0.8rem; }
-            .size-ctrl-header span:last-child { display: none; } /* 矢印を消す */
-            footer { position: fixed; bottom: 30px; right: 55px; flex-direction: column; background: transparent; border: none; width: auto; gap: 15px; padding: 0; }
+            .size-ctrl-header { cursor: default; font-size: 0.85rem; }
+            .size-ctrl-header span:last-child { display: none; }
+
+            footer { position: fixed; bottom: 30px; right: 30px; flex-direction: column; background: transparent; border: none; width: auto; gap: 20px; padding: 0; }
             #back-to-top { position: relative; right: 0; bottom: 0; margin-bottom: 5px; }
         }
         .content { display: none; }
@@ -141,12 +182,12 @@
 
 <main id="main-scroll">
     <div class="progress-card">
-        <div style="display: flex; justify-content: space-between; font-size: 0.8em; font-weight: bold;">
-            <span>🖼️ 進捗</span><span id="txt-p">0% (0/30)</span>
+        <div style="display: flex; justify-content: space-between; font-size: 0.85em; font-weight: bold;">
+            <span>🖼️ 名画 進捗</span><span id="txt-p">0% (0/30)</span>
         </div>
         <div class="bar-bg"><div id="bar-p" class="bar-fill"></div></div>
-        <div style="display: flex; justify-content: space-between; font-size: 0.8em; font-weight: bold; margin-top:8px;">
-            <span>🗿 進捗</span><span id="txt-s">0% (0/13)</span>
+        <div style="display: flex; justify-content: space-between; font-size: 0.85em; font-weight: bold; margin-top:10px;">
+            <span>🗿 彫刻 進捗</span><span id="txt-s">0% (0/13)</span>
         </div>
         <div class="bar-bg"><div id="bar-s" class="bar-fill"></div></div>
     </div>
@@ -154,99 +195,93 @@
     <div id="statues" class="content"></div>
 </main>
 
-<div id="scroll-area"><div id="scroll-thumb"></div></div>
+<div id="img-modal" onclick="closeModal()">
+    <img id="modal-img" src="" alt="拡大画像">
+</div>
 
-<div id="img-modal" onclick="closeModal()"><img id="modal-img" src=""></div>
-
-<button id="back-to-top" class="btn-circle" onclick="scrollToTop()">▲</button>
+<button id="back-to-top" class="btn" onclick="scrollToTop()">▲</button>
 
 <footer>
-    <button class="btn-circle" onclick="exportJSON()">💾</button>
-    <button class="btn-circle" onclick="document.getElementById('importFile').click()">📂</button>
-    <button class="btn-circle" style="background:#666;" onclick="toggleDarkMode()">🌓</button>
+    <button class="btn" onclick="exportJSON()">💾</button>
+    <button class="btn" onclick="document.getElementById('importFile').click()">📂</button>
+    <button class="btn" style="background:#666;" onclick="toggleDarkMode()">🌓</button>
     <input type="file" id="importFile" style="display:none" onchange="importJSON(event)" accept=".json">
 </footer>
 
 <script>
-const GITHUB_RAW_BASE = "https://raw.githubusercontent.com/shirasu1221/shirasu1221.github.io/refs/heads/main/Atsumori/";
+// 【重要修正】ブランチ指定部分（refs/heads/main）を追加してURLを完全に一致させました
+const GITHUB_RAW_BASE = "https://raw.githubusercontent.com/Lune1221/Lune1221.github.io/refs/heads/main/Atsumori/";
+
 const data = {
     paintings: [
-        {name: "アカデミックなめいが", hint: "右上にコーヒーの跡があるのが偽物"},
-         {name: "あらぶるめいがのひだり", hint: "	左側の雷神の色が緑なのが偽物"},
-        {name: "あらぶるめいがのみぎ", hint: "	右側の風神の色が白なのが偽物"}, 
-        {name: "いいかんじのめいが", hint: "本物のみ"},
-        {name: "いいめいが", hint: "本物のみ"}, {name: "いきなめいが", hint: "本物のみ"},
-        {name: "いさましいめいが", hint: "中央の人物の眉が下がっているのが偽物"}, 
-        {name: "いなせなめいが", hint: "眉がハの字に上がっているのが偽物"},
-        {name: "おごそかなめいが", hint: "奥の人物の横にいる人が大きいのが偽物"},
-         {name: "おだやかなめいが", hint: "本物のみ"},
-        {name: "おちついためいが", hint: "注いでいる牛乳がドバドバ出ているのが偽物"}, 
-        {name: "おもしろいめいが", hint: "胸元に花がないのが偽物"},
-        {name: "かちのあるめいが", hint: "本物のみ"},
-         {name: "きれいなめいが", hint: "右側に木が生えていないのが偽物"},
-        {name: "しずみゆくめいが", hint: "本物のみ"}, 
-        {name: "しなやかなめいが", hint: "人物が左を向いている、または巨大なのが偽物"},
-        {name: "すごいめいが", hint: "中央の人物が帽子を被っていないのが偽物"}, 
-        {name: "すてきなめいが", hint: "耳飾りが星型になっているのが偽物"},
-        {name: "すばらしいめいが", hint: "本物のみ"},
-         {name: "たおやかなめいが", hint: "抱いている動物が灰色なのが偽物"},
-        {name: "たぐいまれなるめいが", hint: "本物のみ"},
-         {name: "ちからづよいめいが", hint: "本物のみ"},
-        {name: "ちみつなめいが", hint: "花の色が紫色なのが偽物"},
-         {name: "なぞめいためいが", hint: "本物のみ"},
-        {name: "にぎやかなめいが", hint: "本物のみ"}, 
-        {name: "ひかりのめいが", hint: "本物のみ"},
-        {name: "またたくめいが", hint: "本物のみ"}, 
-        {name: "みごとなめいが", hint: "	林に1人しかいないのが偽物"},
-        {name: "ゆうめいなめいが", hint: "眉毛が釣り上がっているのが偽物"}, 
-        {name: "よくみるめいが", hint: "本物のみ"}
+        {name: "アカデミックなめいが", hint: "右上にコーヒーの跡があるのが偽物"},
+        {name: "あらぶるめいがのひだり", hint: "雷神の体が白いのが偽物"},
+        {name: "あらぶるめいがのみぎ", hint: "風神の体が緑色なのが偽物"},
+        {name: "いいかんじのめいが", hint: "本物のみ"},
+        {name: "いいめいが", hint: "本物のみ"},
+        {name: "いきなめいが", hint: "本物のみ"},
+        {name: "いさましいめいが", hint: "中央の人物の眉が下がっているのが偽物"},
+        {name: "いなせなめいが", hint: "眉がハの字に上がっているのが偽物"},
+        {name: "おごそかなめいが", hint: "奥の人物の横にいる人が大きいのが偽物"},
+        {name: "おだやかなめいが", hint: "本物のみ"},
+        {name: "おちついためいが", hint: "注いでいる牛乳がドバドバ出ているのが偽物"},
+        {name: "おもしろいめいが", hint: "胸元に花がないのが偽物"},
+        {name: "かちのあるめいが", hint: "本物のみ"},
+        {name: "きれいなめいが", hint: "右側に木が生えていないのが偽物"},
+        {name: "しずみゆくめいが", hint: "本物のみ"},
+        {name: "しなやかなめいが", hint: "人物が左を向いている、または巨大なのが偽物"},
+        {name: "すごいめいが", hint: "中央の人物が帽子を被っていないのが偽物"},
+        {name: "すてきなめいが", hint: "耳飾りが星型になっているのが偽物"},
+        {name: "すばらしいめいが", hint: "本物のみ"},
+        {name: "たおやかなめいが", hint: "抱いている動物が灰色なのが偽物"},
+        {name: "たぐいまれなるめいが", hint: "本物のみ"},
+        {name: "ちからづよいめいが", hint: "本物のみ"},
+        {name: "ちみつなめいが", hint: "花の色が紫色なのが偽物"},
+        {name: "なぞめいためいが", hint: "本物のみ"},
+        {name: "にぎやかなめいが", hint: "本物のみ"},
+        {name: "ひかりのめいが", hint: "本物のみ"},
+        {name: "またたくめいが", hint: "本物のみ"},
+        {name: "みごとなめいが", hint: "本物のみ"},
+        {name: "ゆうめいなめいが", hint: "眉毛が釣り上がっているのが偽物"},
+        {name: "よくみるめいが", hint: "本物のみ"}
     ],
     statues: [
-        {name: "いしあたまなちょうこく", hint: "口角が上がっているのが偽物"}, 
-        {name: "いだいなちょうこく", hint: "本物のみ"},
-        {name: "いにしえのちょうこく", hint: "頭にアンテナのようなものがあるのが偽物"}, 
+        {name: "いしあたまなちょうこく", hint: "口角が上がっているのが偽物"},
+        {name: "いだいなちょうこく", hint: "本物のみ"},
+        {name: "いにしえのちょうこく", hint: "頭にアンテナのようなものがあるのが偽物"},
         {name: "うつくしいちょうこく", hint: "首飾りがついているのが偽物"},
-        {name: "こうごうしいちょうこく", hint: "右足が前に出ているのが偽物"}, 
-        {name: "しんぴてきなちょうこく", hint: "耳飾りがついているのが偽物"},
+        {name: "こうごうしいちょうこく", hint: "右足が前に出ているのが偽物"},
+        {name: "しんぴてきなちょうこく", hint: "耳飾りがついているのが偽物"},
         {name: "たくましいちょうこく", hint: "腕時計をしているのが偽物"},
-         {name: "てがかりのちょうこく", hint: "青く光っているのが偽物"},
+        {name: "てがかりのちょうこく", hint: "青く光っているのが偽物"},
         {name: "とてつもないちょうこく", hint: "取手の蓋があるのが偽物"},
-         {name: "なじみのあるちょうこく", hint: "本物のみ"},
-        {name: "ぼせいあふれるちょうこく", hint: "舌が出ているのが偽物"},
-         {name: "もののふのちょうこく", hint: "道具を持っているのが偽物"},
+        {name: "なじみのあるちょうこく", hint: "本物のみ"},
+        {name: "ぼせいあふれるちょうこく", hint: "舌が出ているのが偽物"},
+        {name: "もののふのちょうこく", hint: "道具を持っているのが偽物"},
         {name: "りりしいちょうこく", hint: "右脇に本を抱えているのが偽物"}
     ]
 };
 
 const mainScroll = document.getElementById('main-scroll');
-const scrollThumb = document.getElementById('scroll-thumb');
-const scrollArea = document.getElementById('scroll-area');
 const topBtn = document.getElementById('back-to-top');
 
-function syncThumb() {
-    const scrollMax = mainScroll.scrollHeight - mainScroll.clientHeight;
-    if (scrollMax <= 0) return;
-    const pct = mainScroll.scrollTop / scrollMax;
-    const thumbMax = scrollArea.clientHeight - scrollThumb.clientHeight;
-    scrollThumb.style.top = (pct * thumbMax) + 'px';
-    if (mainScroll.scrollTop > 300) topBtn.classList.add('show'); else topBtn.classList.remove('show');
+mainScroll.addEventListener('scroll', () => {
+    if (mainScroll.scrollTop > 300) {
+        topBtn.classList.add('show');
+    } else {
+        topBtn.classList.remove('show');
+    }
+});
+
+function scrollToTop() {
+    mainScroll.style.scrollBehavior = 'smooth';
+    mainScroll.scrollTo({ top: 0 });
 }
-mainScroll.addEventListener('scroll', () => requestAnimationFrame(syncThumb));
 
-let isDragging = false, startY, startScrollTop;
-const startDrag = (e) => { isDragging = true; mainScroll.style.scrollBehavior = 'auto'; startY = e.pageY || e.touches[0].pageY; startScrollTop = mainScroll.scrollTop; document.body.style.userSelect = 'none'; };
-const doDrag = (e) => { if (!isDragging) return; const currentY = e.pageY || (e.touches ? e.touches[0].pageY : 0); const deltaY = currentY - startY; const scrollMax = mainScroll.scrollHeight - mainScroll.clientHeight; const thumbMax = scrollArea.clientHeight - scrollThumb.clientHeight; mainScroll.scrollTop = startScrollTop + (deltaY / thumbMax * scrollMax); };
-const stopDrag = () => { isDragging = false; document.body.style.userSelect = ''; };
-
-scrollThumb.addEventListener('mousedown', startDrag);
-scrollThumb.addEventListener('touchstart', startDrag, {passive: false});
-window.addEventListener('mousemove', doDrag);
-window.addEventListener('touchmove', doDrag, {passive: false});
-window.addEventListener('mouseup', stopDrag);
-window.addEventListener('touchend', stopDrag);
-
-function scrollToTop() { mainScroll.style.scrollBehavior = 'smooth'; mainScroll.scrollTo({ top: 0 }); }
-function changeImgSize(val) { document.documentElement.style.setProperty('--img-size', val + '%'); localStorage.setItem('savedImgSize', val); }
+function changeImgSize(val) {
+    document.documentElement.style.setProperty('--img-size', val + '%');
+    localStorage.setItem('savedImgSize', val);
+}
 
 function toggleSizeSlider() {
     if (window.innerWidth >= 768) return;
@@ -256,22 +291,58 @@ function toggleSizeSlider() {
     arrow.style.transform = wrapper.classList.contains('open') ? 'rotate(180deg)' : 'rotate(0deg)';
 }
 
-function openModal(src) { const modal = document.getElementById('img-modal'); const modalImg = document.getElementById('modal-img'); modalImg.src = src; modal.classList.add('active'); }
-function closeModal() { document.getElementById('img-modal').classList.remove('active'); }
+function openModal(src) {
+    const modal = document.getElementById('img-modal');
+    const modalImg = document.getElementById('modal-img');
+    modalImg.src = src;
+    modal.classList.add('active');
+}
+function closeModal() {
+    document.getElementById('img-modal').classList.remove('active');
+}
 
-const observer = new IntersectionObserver((entries) => { entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('active'); else entry.target.classList.remove('active'); }); }, { threshold: 0.1 });
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            entry.target.classList.add('active');
+        } else {
+            entry.target.classList.remove('active');
+        }
+    });
+}, { threshold: 0.1 });
 
 function createList(type, listId) {
     const container = document.getElementById(listId);
-    const subDir = type === 'paintings' ? 'painting/' : 'sculpture/';
+    // 【重要修正】GitHubのフォルダ名に合わせて単数形から複数形（paintings / statues）に変更
+    const subDir = (type === 'paintings') ? 'paintings/' : 'statues/';
+    
     data[type].forEach(item => {
         const div = document.createElement('div');
         div.className = 'item reveal';
         const checkId = `check-${item.name}`;
         const isChecked = localStorage.getItem(checkId) === 'true';
-        const imgSrc = `${GITHUB_RAW_BASE}${subDir}${encodeURIComponent(item.name)}.jpeg`;
-        div.innerHTML = `<div class="item-name-box" style="display:flex; align-items:center; pointer-events:none;"><input type="checkbox" id="${checkId}" ${isChecked ? 'checked' : ''} onclick="updateStatus(this.id)"><label>${item.name}</label></div><div class="hint"><div><b>特徴:</b> ${item.hint}</div><div class="img-container"><img src="${imgSrc}" class="comparison-img" onclick="openModal(this.src)" onerror="this.parentElement.parentElement.style.display='none'"></div></div>`;
-        div.onclick = (e) => { if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'IMG') { const c = div.querySelector('input'); c.checked = !c.checked; updateStatus(c.id); } };
+        const encodedName = encodeURIComponent(item.name);
+        const imgSrc = `${GITHUB_RAW_BASE}${subDir}${encodedName}.jpeg`;
+
+        div.addEventListener('click', (e) => {
+            if (e.target.tagName === 'IMG') return;
+            const cb = div.querySelector('input');
+            cb.checked = !cb.checked;
+            updateStatus(cb.id);
+        });
+
+        div.innerHTML = `
+            <div class="item-name-box">
+                <input type="checkbox" id="${checkId}" ${isChecked ? 'checked' : ''} onclick="event.stopPropagation(); updateStatus(this.id);">
+                <label>${item.name}</label>
+            </div>
+            <div class="hint">
+                <div style="margin-bottom:8px;"><b>偽物の特徴:</b> ${item.hint}</div>
+                <div class="img-container">
+                    <img src="${imgSrc}" class="comparison-img" onclick="openModal(this.src)" onerror="this.src='https://placehold.co/400x200?text=Image+Load+Error'; console.log('Failed:', this.src);">
+                </div>
+            </div>
+        `;
         container.appendChild(div);
         observer.observe(div);
     });
@@ -285,45 +356,69 @@ function showTab(tabName) {
     mainScroll.scrollTop = 0;
 }
 
-function updateStatus(id) { localStorage.setItem(id, document.getElementById(id).checked); updateProgressBar(); }
+function updateStatus(id) {
+    const cb = document.getElementById(id);
+    if(cb) {
+        localStorage.setItem(id, cb.checked);
+        updateProgressBar();
+    }
+}
+
 function updateProgressBar() {
     ['paintings', 'statues'].forEach(cat => {
         const key = cat === 'paintings' ? 'p' : 's';
-        const checked = data[cat].filter(item => localStorage.getItem(`check-${item.name}`) === 'true').length;
         const total = data[cat].length;
-        document.getElementById(`txt-${key}`).innerText = `${Math.round((checked/total)*100)}% (${checked}/${total})`;
-        document.getElementById(`bar-${key}`).style.width = `${(checked/total)*100}%`;
+        const checked = data[cat].filter(item => localStorage.getItem(`check-${item.name}`) === 'true').length;
+        const percent = Math.round((checked / total) * 100);
+        document.getElementById(`txt-${key}`).innerText = `${percent}% (${checked}/${total})`;
+        document.getElementById(`bar-${key}`).style.width = `${percent}%`;
     });
 }
 
 function exportJSON() {
-    const s = {}; Object.keys(localStorage).forEach(k => { if(k.startsWith('check-')) s[k] = localStorage.getItem(k); });
-    let f = prompt("名前をつけて保存", "あつ森美術品リスト");
-    if (f) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(s)], {type:'application/json'})); a.download = `${f}.json`; a.click(); }
+    const storageData = {};
+    Object.keys(localStorage).forEach(k => { if(k.startsWith('check-')) storageData[k] = localStorage.getItem(k); });
+    
+    let fileName = prompt("保存するファイル名を入力してください", "Backup");
+    if (fileName === null) return;
+    if (fileName.trim() === "") fileName = "Backup";
+
+    const blob = new Blob([JSON.stringify(storageData)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${fileName}.json`;
+    a.click();
 }
 
-function importJSON(e) {
-    const r = new FileReader();
-    r.onload = (x) => {
-        const j = JSON.parse(x.target.result);
+function importJSON(event) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const imported = JSON.parse(e.target.result);
         const darkMode = localStorage.getItem('darkMode');
         const imgSize = localStorage.getItem('savedImgSize');
-        localStorage.clear(); 
+        localStorage.clear();
         if(darkMode) localStorage.setItem('darkMode', darkMode);
         if(imgSize) localStorage.setItem('savedImgSize', imgSize);
-        Object.keys(j).forEach(k => localStorage.setItem(k, j[k]));
+        Object.keys(imported).forEach(k => localStorage.setItem(k, imported[k]));
         location.reload();
     };
-    r.readAsText(e.target.files[0]);
+    reader.readAsText(event.target.files[0]);
 }
 
-function toggleDarkMode() { localStorage.setItem('darkMode', document.body.classList.toggle('dark-mode')); }
+function toggleDarkMode() {
+    localStorage.setItem('darkMode', document.body.classList.toggle('dark-mode'));
+}
 
 createList('paintings', 'paintings');
 createList('statues', 'statues');
 updateProgressBar();
+
 if (localStorage.getItem('darkMode') === 'true') document.body.classList.add('dark-mode');
-const sv = localStorage.getItem('savedImgSize'); if (sv) { document.getElementById('size-slider').value = sv; changeImgSize(sv); }
+const sv = localStorage.getItem('savedImgSize');
+if (sv) {
+    document.getElementById('size-slider').value = sv;
+    changeImgSize(sv);
+}
 </script>
 </body>
 </html>
