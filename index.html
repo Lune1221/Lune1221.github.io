@@ -142,14 +142,13 @@
             justify-content: space-around; z-index: 1000;
         }
 
-        /* 横幅が広い端末（タブレット・PC等）のレイアウト */
+        /* 横幅が広い端末のレイアウト */
         @media (min-width: 768px) {
             body { grid-template-areas: "nav main"; grid-template-columns: 240px 1fr; grid-template-rows: 1fr; }
             nav { border-bottom: none; border-right: 3px solid var(--main-color); height: 100vh; }
             .tabs-row { flex-direction: column; padding-top: 20px; }
             .tab { padding: 18px; font-size: 1rem; }
             
-            /* PC・タブレット横画面ではサイズ調整を最初から広げておく */
             .size-ctrl-box { background: none; border-top: 1px solid rgba(0,0,0,0.05); margin-top: 20px; padding: 15px; }
             #size-slider-wrapper { height: auto !important; overflow: visible; }
             .size-ctrl-header { cursor: default; font-size: 0.85rem; }
@@ -209,7 +208,6 @@
 </footer>
 
 <script>
-// 【重要修正】ブランチ指定部分（refs/heads/main）を追加してURLを完全に一致させました
 const GITHUB_RAW_BASE = "https://raw.githubusercontent.com/Lune1221/Lune1221.github.io/refs/heads/main/Atsumori/";
 
 const data = {
@@ -256,7 +254,7 @@ const data = {
         {name: "てがかりのちょうこく", hint: "青く光っているのが偽物"},
         {name: "とてつもないちょうこく", hint: "取手の蓋があるのが偽物"},
         {name: "なじみのあるちょうこく", hint: "本物のみ"},
-        {name: "ぼせいあふれるちょうこく", hint: "舌が出ているのが偽物"},
+        {name: "ほぼせいあふれるちょうこく", hint: "舌が出ているのが偽物"},
         {name: "もののふのちょうこく", hint: "道具を持っているのが偽物"},
         {name: "りりしいちょうこく", hint: "右脇に本を抱えているのが偽物"}
     ]
@@ -313,7 +311,6 @@ const observer = new IntersectionObserver((entries) => {
 
 function createList(type, listId) {
     const container = document.getElementById(listId);
-    // 【重要修正】GitHubのフォルダ名に合わせて単数形から複数形（paintings / statues）に変更
     const subDir = (type === 'paintings') ? 'paintings/' : 'statues/';
     
     data[type].forEach(item => {
@@ -321,7 +318,10 @@ function createList(type, listId) {
         div.className = 'item reveal';
         const checkId = `check-${item.name}`;
         const isChecked = localStorage.getItem(checkId) === 'true';
-        const encodedName = encodeURIComponent(item.name);
+
+        // 【最重要修正】環境による文字コードのズレ（NFD問題）を回避するために、NFCで文字を統合・正規化する処理を追加
+        const normalizedName = item.name.normalize('NFC');
+        const encodedName = encodeURIComponent(normalizedName);
         const imgSrc = `${GITHUB_RAW_BASE}${subDir}${encodedName}.jpeg`;
 
         div.addEventListener('click', (e) => {
@@ -339,7 +339,7 @@ function createList(type, listId) {
             <div class="hint">
                 <div style="margin-bottom:8px;"><b>偽物の特徴:</b> ${item.hint}</div>
                 <div class="img-container">
-                    <img src="${imgSrc}" class="comparison-img" onclick="openModal(this.src)" onerror="this.src='https://placehold.co/400x200?text=Image+Load+Error'; console.log('Failed:', this.src);">
+                    <img src="${imgSrc}" class="comparison-img" onclick="openModal(this.src)" onerror="this.src='https://placehold.co/400x200?text=Image+Load+Error'; console.log('Failed to load:', this.src);">
                 </div>
             </div>
         `;
