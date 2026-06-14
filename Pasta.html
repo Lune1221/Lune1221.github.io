@@ -62,7 +62,6 @@
 
         .btn.playing { background-color: var(--accent-color); box-shadow: 0 4px 6px rgba(76, 175, 80, 0.2); }
         
-        /* インポート中（準備中）にボタンを少し暗くして触れなくするスタイル */
         .btn:disabled {
             background-color: #ccc;
             box-shadow: none;
@@ -82,7 +81,6 @@
         <button class="btn" id="btn-pasta" 
                 onmousedown="handleTrigger(event, 'pasta')" 
                 ontouchstart="handleTrigger(event, 'pasta')" disabled>読み込み中...</button>
-        <audio id="audio-pasta" src="Pasta/pasta.mp3"></audio>
     </div>
 
     <div class="player-card">
@@ -90,7 +88,6 @@
         <button class="btn" id="btn-junren" 
                 onmousedown="handleTrigger(event, 'junren')" 
                 ontouchstart="handleTrigger(event, 'junren')" disabled>読み込み中...</button>
-        <audio id="audio-junren" src="Pasta/song.mp3"></audio>
     </div>
 
     <footer>
@@ -99,92 +96,127 @@
 </div>
 
 <script>
-    let checkInterval = null;
-    let unmuteTime = 1.24; // 1.54秒 - 0.3秒 = 1.24秒ジャスト
+    // Web Audio APIの初期化
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    const audioCtx = new AudioContext();
 
-    // ーーー 【超重要】開いた瞬間に自動でインポート（先読み）する処理 ーーー
+    // 音声データを格納するバッファ
+    const buffers = { pasta: null, junren: null };
+    // 現在再生中のソースノードを管理
+    const activeSources = { pasta: null, junren: null };
+    // 純恋歌のボリュームを制御するためのノード
+    let junrenGainNode = null;
+
+    // 音源のパス設定
+    const audioUrls = {
+        pasta: 'Pasta/pasta.mp3',
+        junren: 'Pasta/song.mp3'
+    };
+
+    // 音量復活のタイミング（以前の300msのズレを考慮した1.24秒のままで調整しています）
+    const unmuteTime = 1.24; 
+
+    // ーーー ページを開いた瞬間に音声データを先読みしてデコード ーーー
     window.addEventListener('DOMContentLoaded', () => {
-        const pastaAudio = document.getElementById('audio-pasta');
-        const junrenAudio = document.getElementById('audio-junren');
-
-        // 音源ファイルをBlob（バイナリデータ）として事前に裏でダウンロード
-        const loadAudio = (audioEl, btnId) => {
-            return fetch(audioEl.src)
-                .then(response => response.blob())
-                .then(blob => {
-                    // ダウンロードしたデータをブラウザのメモリ内URLに変換して再セット
-                    const blobUrl = URL.createObjectURL(blob);
-                    audioEl.src = blobUrl;
-                    audioEl.load(); // メモリに完全に展開
-
-                    // 準備ができたらボタンを押せるようにする
-                    const btn = document.getElementById(btnId);
-                    btn.disabled = false;
-                    btn.innerText = (btnId === 'btn-pasta') ? '再生する' : '再生する';
-                })
-                .catch(err => {
-                    console.error("インポート失敗:", err);
-                    document.getElementById(btnId).innerText = "読み込み失敗";
-                });
+        const loadAudio = async (id) => {
+            try {
+                const response = await fetch(audioUrls[id]);
+                const arrayBuffer = await response.arrayBuffer();
+                // 音声データをブラウザが即座に鳴らせる形式にデコードしてメモリに保存
+                buffers[id] = await audioCtx.decodeAudioData(arrayBuffer);
+                
+                const btn = document.getElementById(`btn-${id}`);
+                btn.disabled = false;
+                btn.innerText = '再生する';
+            } catch (err) {
+                console.error(`${id} の読み込み失敗:`, err);
+                document.getElementById(`btn-${id}`).innerText = "読み込み失敗";
+            }
         };
 
-        // 2つの音源を同時に先行インポート開始
-        Promise.all([
-            loadAudio(pastaAudio, 'btn-pasta'),
-            loadAudio(junrenAudio, 'btn-junren')
-        ]);
+        Promise.all([loadAudio('pasta'), loadAudio('junren')]);
     });
-    // ーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーー
 
     function handleTrigger(e, id) {
         e.preventDefault(); 
+        // iOS/Androidなどのブラウザ制限を解除するためにコンテキストを再開
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
         togglePlay(id);
     }
 
-    function togglePlay(currentId) {
-        const currentAudio = document.getElementById('audio-' + currentId);
-        const currentButton = document.getElementById('btn-' + currentId);
-        const junrenAudio = document.getElementById('audio-junren');
+    function togglePlay(id) {
+        const btn = document.getElementById(`btn-${id}`);
         
-        if (currentAudio.paused) {
-            // メモリから直接再生されるため、完全に「ラグ0秒」で即座に鳴ります！
-            currentAudio.play().catch(error => console.log("再生エラー:", error));
-            currentButton.innerText = '停止する';
-            currentButton.classList.add('playing');
-
-            if (currentId === 'pasta') {
-                junrenAudio.volume = 0;
-
-                if (checkInterval) clearInterval(checkInterval);
-
-                checkInterval = setInterval(function() {
-                    if (currentAudio.currentTime >= unmuteTime || currentAudio.paused) {
-                        junrenAudio.volume = 1.0;
-                        clearInterval(checkInterval);
-                    }
-                }, 15); // さらに監視精度を極限（15msごと）まで引き上げ
-            }
-        } else {
-            currentAudio.pause();
-            currentAudio.currentTime = 0;
-            currentButton.innerText = '再生する';
-            currentButton.classList.remove('playing');
-
-            if (currentId === 'pasta') {
-                junrenAudio.volume = 1.0;
-                if (checkInterval) clearInterval(checkInterval);
-            }
+        // 再生中の場合は停止する
+        if (activeSources[id]) {
+            stopTrack(id);
+            return;
         }
 
-        currentAudio.onended = function() {
-            currentButton.innerText = '再生する';
-            currentButton.classList.remove('playing');
+        // ソースノード（再生プレイヤーのようなもの）を作成
+        const source = audioCtx.createBufferSource();
+        source.buffer = buffers[id];
+        activeSources[id] = source;
 
-            if (currentId === 'pasta') {
-                junrenAudio.volume = 1.0;
-                if (checkInterval) clearInterval(checkInterval);
+        btn.innerText = '停止する';
+        btn.classList.add('playing');
+
+        const startTime = audioCtx.currentTime;
+
+        if (id === 'pasta') {
+            // パスタが再生されたとき、もし「純恋歌」がすでに流れていたら音量を制御する
+            if (activeSources['junren'] && junrenGainNode) {
+                // ボタンを押した瞬間（startTime）に純恋歌のボリュームを0にする
+                junrenGainNode.gain.setValueAtTime(0, startTime);
+                // 指定した秒数（startTime + unmuteTime）に、正確にボリュームを1.0に戻す予約を入れる
+                junrenGainNode.gain.setValueAtTime(1.0, startTime + unmuteTime);
+            }
+        } else if (id === 'junren') {
+            // 純恋歌の音量をコントロールするノードを作成して接続
+            junrenGainNode = audioCtx.createGain();
+            source.connect(junrenGainNode);
+            junrenGainNode.connect(audioCtx.destination);
+        }
+
+        // 純恋歌以外（パスタ）は直接スピーカーに接続
+        if (id !== 'junren') {
+            source.connect(audioCtx.destination);
+        }
+
+        // 再生終了時の処理
+        source.onended = () => {
+            // 自然に終了した場合のみボタン表示を元に戻す
+            if (activeSources[id] === source) {
+                cleanupUI(id);
             }
         };
+
+        // 即座に再生開始
+        source.start(startTime);
+    }
+
+    function stopTrack(id) {
+        if (activeSources[id]) {
+            try {
+                activeSources[id].stop();
+            } catch(e) {}
+            cleanupUI(id);
+        }
+    }
+
+    function cleanupUI(id) {
+        activeSources[id] = null;
+        const btn = document.getElementById(`btn-${id}`);
+        btn.innerText = '再生する';
+        btn.classList.remove('playing');
+
+        // パスタが停止された、または終了した際、純恋歌がまだ流れていれば音量を1.0に強制復帰
+        if (id === 'pasta' && activeSources['junren'] && junrenGainNode) {
+            junrenGainNode.gain.cancelScheduledValues(audioCtx.currentTime);
+            junrenGainNode.gain.setValueAtTime(1.0, audioCtx.currentTime);
+        }
     }
 </script>
 
