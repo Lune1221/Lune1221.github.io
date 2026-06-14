@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>パスタ作ったお前 特設サイト</title>
+    <style>
+        :root {
+            --main-color: #e04534; /* トマトソース的な赤 */
+            --bg-color: #fff9f3;   /* パスタ風の温かみのあるベージュ */
+            --text-color: #333;
+            --accent-color: #4caf50; /* バジルの緑 */
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            text-align: center;
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            max-width: 500px;
+            width: 90%;
+            border: 3px solid var(--main-color);
+        }
+
+        h1 {
+            color: var(--main-color);
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 900;
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .player-card {
+            background: #fafafa;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #eee;
+            transition: transform 0.2s;
+        }
+
+        .player-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .player-title {
+            font-weight: bold;
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn {
+            background-color: var(--main-color);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px rgba(224, 69, 52, 0.2);
+            width: 80%;
+        }
+
+        .btn:hover {
+            background-color: #c83728;
+            transform: scale(1.03);
+        }
+
+        .btn.playing {
+            background-color: var(--accent-color);
+            box-shadow: 0 4px 6px rgba(76, 175, 80, 0.2);
+        }
+
+        footer {
+            margin-top: 30px;
+            font-size: 0.8rem;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>パスタ作ったお前</h1>
+
+    <div class="player-card">
+        <div class="player-title"> パスタ作ったお前</div>
+        <button class="btn" id="btn-pasta" onclick="togglePlay('pasta', '純恋歌.mp3')">再生する</button>
+        <audio id="audio-pasta" src="パスタ作ったお前.mp3"></audio>
+    </div>
+
+    <div class="player-card">
+        <div class="player-title">純恋歌</div>
+        <button class="btn" id="btn-junren" onclick="togglePlay('junren', 'パスタ作ったお前.mp3')">再生する</button>
+        <audio id="audio-junren" src="純恋歌.mp3"></audio>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 パスタ作ったお前</p>
+    </footer>
+</div>
+
+<script>
+    function togglePlay(id, otherId) {
+        const audio = document.getElementById('audio-' + id);
+        const button = document.getElementById('btn-' + id);
+        
+        // もう片方のオーディオを特定して止める
+        const otherAudio = document.getElementById(id === 'pasta' ? 'audio-junren' : 'audio-pasta');
+        const otherButton = document.getElementById(id === 'pasta' ? 'btn-junren' : 'btn-pasta');
+        
+        if (!otherAudio.paused) {
+            otherAudio.pause();
+            otherAudio.currentTime = 0;
+            otherButton.innerText = '再生する';
+            otherButton.classList.remove('playing');
+        }
+
+        // 自分の再生・停止切り替え
+        if (audio.paused) {
+            audio.play();
+            button.innerText = '停止する';
+            button.classList.add('playing');
+        } else {
+            audio.pause();
+            audio.currentTime = 0; // 停止時は最初に戻す
+            button.innerText = '再生する';
+            button.classList.remove('playing');
+        }
+
+        // 曲が最後まで再生し終わった時の処理
+        audio.onended = function() {
+            button.innerText = '再生する';
+            button.classList.remove('playing');
+        };
+    }
+</script>
+
+</body>
+</html>
