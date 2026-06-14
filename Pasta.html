@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>パスタ作ったお前</title>
+    <title>パスタ作ったお前 特設サイト</title>
     <style>
         :root {
-            --main-color: #e04534; /* トマト赤 */
-            --bg-color: #fff9f3;   /* パスタベージュ */
+            --main-color: #e04534;
+            --bg-color: #fff9f3;
             --text-color: #333;
-            --accent-color: #4caf50; /* バジル緑 */
+            --accent-color: #4caf50;
         }
 
         body {
@@ -37,39 +37,11 @@
             box-sizing: border-box;
         }
 
-        h1 {
-            color: var(--main-color);
-            font-size: 2.3rem;
-            margin-top: 0;
-            margin-bottom: 10px;
-            font-weight: 900;
-        }
-
-        .subtitle {
-            font-size: 1.1rem;
-            color: #666;
-            margin-bottom: 30px;
-        }
-
-        .player-card {
-            background: #fafafa;
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 20px;
-            border: 1px solid #eee;
-            transition: transform 0.2s;
-        }
-
-        .player-card:hover {
-            transform: translateY(-2px);
-        }
-
-        .player-title {
-            font-weight: bold;
-            font-size: 1.2rem;
-            margin-bottom: 15px;
-        }
-
+        h1 { color: var(--main-color); font-size: 2.3rem; margin-top: 0; margin-bottom: 10px; font-weight: 900; }
+        .subtitle { font-size: 1.1rem; color: #666; margin-bottom: 30px; }
+        .player-card { background: #fafafa; border-radius: 15px; padding: 20px; margin-bottom: 20px; border: 1px solid #eee; }
+        .player-title { font-weight: bold; font-size: 1.2rem; margin-bottom: 15px; }
+        
         .btn {
             background-color: var(--main-color);
             color: white;
@@ -79,69 +51,69 @@
             font-weight: bold;
             border-radius: 50px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.1s; /* 反応を早くするために少し短縮 */
             box-shadow: 0 4px 6px rgba(224, 69, 52, 0.2);
             width: 80%;
             display: inline-block;
         }
 
-        .btn:hover {
-            background-color: #c83728;
-            transform: scale(1.03);
-        }
-
-        .btn.playing {
-            background-color: var(--accent-color);
-            box-shadow: 0 4px 6px rgba(76, 175, 80, 0.2);
-        }
-
-        footer {
-            margin-top: 30px;
-            font-size: 0.8rem;
-            color: #999;
-        }
+        .btn:hover { background-color: #c83728; transform: scale(1.03); }
+        .btn.playing { background-color: var(--accent-color); box-shadow: 0 4px 6px rgba(76, 175, 80, 0.2); }
+        footer { margin-top: 30px; font-size: 0.8rem; color: #999; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h1>パスタ作ったお前</h1>
-    <p class="subtitle">~ 大親友の彼女のツレの味 ~</p>
 
     <div class="player-card">
-        <div class="player-title">🎵 詠唱（パスタ作ったお前）</div>
+        <div class="player-title">パスタ作ったお前</div>
         <button class="btn" id="btn-pasta" onclick="togglePlay('pasta')">再生する</button>
         <audio id="audio-pasta" src="Pasta/pasta.mp3" preload="auto"></audio>
     </div>
 
     <div class="player-card">
-        <div class="player-title">🎤 本編（純恋歌）</div>
+        <div class="player-title">純恋歌</div>
         <button class="btn" id="btn-junren" onclick="togglePlay('junren')">再生する</button>
         <audio id="audio-junren" src="Pasta/song.mp3" preload="auto"></audio>
     </div>
 
     <footer>
-        <p>&copy; 2026 パスタ作ったお前応援団</p>
+        <p>&copy; 2026 パスタ作ったお前</p>
     </footer>
 </div>
 
 <script>
+    let muteTimer = null; // タイマー管理用の変数
+
     function togglePlay(currentId) {
         const currentAudio = document.getElementById('audio-' + currentId);
         const currentButton = document.getElementById('btn-' + currentId);
         const junrenAudio = document.getElementById('audio-junren');
         
+        // ーーー ★設定項目★ ーーー
+        // 「パスタ作ったお前」と言い終わる秒数をここに指定してください（小数点の指定もOK）
+        let speechDuration = 4.5; 
+        // ーーーーーーーーーーーーー
+
         if (currentAudio.paused) {
             // 再生スタート
-            currentAudio.play().catch(function(error) {
-                console.log("再生エラー:", error);
-            });
+            currentAudio.play().catch(error => console.log("再生エラー:", error));
             currentButton.innerText = '停止する';
             currentButton.classList.add('playing');
 
-            // 【対策】mutedではなく、音量(volume)を直接 0 (消音) にする
             if (currentId === 'pasta') {
+                // 本編の音量をゼロにする
                 junrenAudio.volume = 0;
+
+                // 前のタイマーが残っていれば一回クリア
+                if (muteTimer) clearTimeout(muteTimer);
+
+                // 指定した秒数（ミリ秒換算）が経ったら、曲の終了を待たずに音量を戻す！
+                muteTimer = setTimeout(function() {
+                    junrenAudio.volume = 1.0;
+                }, speechDuration * 1000);
             }
         } else {
             // 手動ストップ
@@ -150,24 +122,24 @@
             currentButton.innerText = '再生する';
             currentButton.classList.remove('playing');
 
-            // 【対策】音量を元の 1.0 (100%) に戻す
             if (currentId === 'pasta') {
                 junrenAudio.volume = 1.0;
+                if (muteTimer) clearTimeout(muteTimer); // タイマー解除
             }
         }
 
-        // 曲が最後まで流れ終わった時
+        // 曲が最後まで完全に流れ終わった時
         currentAudio.onended = function() {
             currentButton.innerText = '再生する';
             currentButton.classList.remove('playing');
 
-            // 【対策】最後まで終わったら音量を 1.0 に戻す
             if (currentId === 'pasta') {
                 junrenAudio.volume = 1.0;
+                if (muteTimer) clearTimeout(muteTimer);
             }
         };
     }
 </script>
 
-</body>
+</head>
 </html>
