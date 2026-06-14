@@ -6,10 +6,10 @@
     <title>パスタ作ったお前 特設サイト</title>
     <style>
         :root {
-            --main-color: #e04534; /* トマトソース的な赤 */
-            --bg-color: #fff9f3;   /* パスタ風の温かみのあるベージュ */
+            --main-color: #e04534; /* トマト赤 */
+            --bg-color: #fff9f3;   /* パスタベージュ */
             --text-color: #333;
-            --accent-color: #4caf50; /* バジルの緑 */
+            --accent-color: #4caf50; /* バジル緑 */
         }
 
         body {
@@ -34,11 +34,13 @@
             max-width: 500px;
             width: 90%;
             border: 3px solid var(--main-color);
+            box-sizing: border-box;
         }
 
         h1 {
             color: var(--main-color);
-            font-size: 2.5rem;
+            font-size: 2.3rem;
+            margin-top: 0;
             margin-bottom: 10px;
             font-weight: 900;
         }
@@ -66,24 +68,21 @@
             font-weight: bold;
             font-size: 1.2rem;
             margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
         }
 
         .btn {
             background-color: var(--main-color);
             color: white;
             border: none;
-            padding: 12px 24px;
-            font-size: 1rem;
+            padding: 14px 24px;
+            font-size: 1.1rem;
             font-weight: bold;
             border-radius: 50px;
             cursor: pointer;
             transition: all 0.2s;
             box-shadow: 0 4px 6px rgba(224, 69, 52, 0.2);
             width: 80%;
+            display: inline-block;
         }
 
         .btn:hover {
@@ -91,6 +90,7 @@
             transform: scale(1.03);
         }
 
+        /* 再生中のスタイル */
         .btn.playing {
             background-color: var(--accent-color);
             box-shadow: 0 4px 6px rgba(76, 175, 80, 0.2);
@@ -109,15 +109,15 @@
     <h1>パスタ作ったお前</h1>
 
     <div class="player-card">
-        <div class="player-title"> パスタ作ったお前</div>
-        <button class="btn" id="btn-pasta" onclick="togglePlay('pasta', '純恋歌.mp3')">再生する</button>
-        <audio id="audio-pasta" src="パスタ作ったお前.mp3"></audio>
+        <div class="player-title">パスタ作ったお前</div>
+        <button class="btn" id="btn-pasta" onclick="togglePlay('pasta')">再生する</button>
+        <audio id="audio-pasta" src="パスタ作ったお前.mp3" preload="auto"></audio>
     </div>
 
     <div class="player-card">
         <div class="player-title">純恋歌</div>
-        <button class="btn" id="btn-junren" onclick="togglePlay('junren', 'パスタ作ったお前.mp3')">再生する</button>
-        <audio id="audio-junren" src="純恋歌.mp3"></audio>
+        <button class="btn" id="btn-junren" onclick="togglePlay('junren')">再生する</button>
+        <audio id="audio-junren" src="純恋歌.mp3" preload="auto"></audio>
     </div>
 
     <footer>
@@ -126,14 +126,17 @@
 </div>
 
 <script>
-    function togglePlay(id, otherId) {
-        const audio = document.getElementById('audio-' + id);
-        const button = document.getElementById('btn-' + id);
+    function togglePlay(currentId) {
+        // 現在クリックされた方の要素を取得
+        const currentAudio = document.getElementById('audio-' + currentId);
+        const currentButton = document.getElementById('btn-' + currentId);
         
-        // もう片方のオーディオを特定して止める
-        const otherAudio = document.getElementById(id === 'pasta' ? 'audio-junren' : 'audio-pasta');
-        const otherButton = document.getElementById(id === 'pasta' ? 'btn-junren' : 'btn-pasta');
+        // もう片方のIDを判定
+        const otherId = (currentId === 'pasta') ? 'junren' : 'pasta';
+        const otherAudio = document.getElementById('audio-' + otherId);
+        const otherButton = document.getElementById('btn-' + otherId);
         
+        // 1. もう片方が再生中なら確実に止める
         if (!otherAudio.paused) {
             otherAudio.pause();
             otherAudio.currentTime = 0;
@@ -141,22 +144,27 @@
             otherButton.classList.remove('playing');
         }
 
-        // 自分の再生・停止切り替え
-        if (audio.paused) {
-            audio.play();
-            button.innerText = '停止する';
-            button.classList.add('playing');
+        // 2. 自分の再生・停止切り替え
+        if (currentAudio.paused) {
+            // 再生する
+            currentAudio.play().catch(function(error) {
+                console.log("再生エラー:", error);
+                alert("音源の読み込みに失敗したか、ブラウザが再生をブロックしました。");
+            });
+            currentButton.innerText = '停止する';
+            currentButton.classList.add('playing');
         } else {
-            audio.pause();
-            audio.currentTime = 0; // 停止時は最初に戻す
-            button.innerText = '再生する';
-            button.classList.remove('playing');
+            // 停止する
+            currentAudio.pause();
+            currentAudio.currentTime = 0; // 曲を最初に戻す
+            currentButton.innerText = '再生する';
+            currentButton.classList.remove('playing');
         }
 
-        // 曲が最後まで再生し終わった時の処理
-        audio.onended = function() {
-            button.innerText = '再生する';
-            button.classList.remove('playing');
+        // 3. 曲が最後まで流れ終わったらボタンを元に戻す
+        currentAudio.onended = function() {
+            currentButton.innerText = '再生する';
+            currentButton.classList.remove('playing');
         };
     }
 </script>
