@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>パスタ作ったお前</title>
+    <title>パスタ作ったお前 特設サイト</title>
     <style>
         :root {
             --main-color: #e04534; /* トマト赤 */
@@ -23,7 +23,6 @@
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            /* 連打したときにブラウザが文字選択や拡大をしないようにガード */
             touch-action: manipulation;
             user-select: none;
             -webkit-user-select: none;
@@ -58,7 +57,6 @@
             width: 80%;
             display: inline-block;
             box-shadow: 0 4px 6px rgba(224, 69, 52, 0.2);
-            /* タップ時の標準ハイライトを無効化して自前の挙動にする */
             -webkit-tap-highlight-color: transparent;
         }
 
@@ -70,9 +68,10 @@
 
 <div class="container">
     <h1>パスタ作ったお前</h1>
+    <p class="subtitle">~ 大親友の彼女のツレの味 ~</p>
 
     <div class="player-card">
-        <div class="player-title">パスタ作ったお前</div>
+        <div class="player-title">🎵 詠唱（パスタ作ったお前）</div>
         <button class="btn" id="btn-pasta" 
                 onmousedown="handleTrigger(event, 'pasta')" 
                 ontouchstart="handleTrigger(event, 'pasta')">再生する</button>
@@ -80,7 +79,7 @@
     </div>
 
     <div class="player-card">
-        <div class="player-title">純恋歌</div>
+        <div class="player-title">🎤 本編（純恋歌）</div>
         <button class="btn" id="btn-junren" 
                 onmousedown="handleTrigger(event, 'junren')" 
                 ontouchstart="handleTrigger(event, 'junren')">再生する</button>
@@ -88,22 +87,20 @@
     </div>
 
     <footer>
-        <p>&copy; 2026 パスタ作ったお前</p>
+        <p>&copy; 2026 パスタ作ったお前応援団</p>
     </footer>
 </div>
 
 <script>
-    let checkInterval = null; // 再生位置を監視するタイマー
+    let checkInterval = null;
 
-    // ーーー ★調整用設定★ ーーー
-    // 「〜ツレの味」と言い終わる「正確な秒数」です。
-    // 無音の時間が0.3秒余っているとのことなので、現在のファイル全体の長さから「0.3」引いた数値を指定するとジャストになります。
-    let unmuteTime = 4.2; 
-    // ーーーーーーーーーーーーーーー
+    // ーーー ★1.24秒に最適化★ ーーー
+    // 1.54秒から無音の0.3秒を引いた「1.24」をジャストの解除時間に指定
+    let unmuteTime = 1.24; 
+    // ーーーーーーーーーーーーーーーーー
 
-    // タッチやクリックが重複して2回発火するのを防ぎつつ、触れた瞬間に処理する関数
     function handleTrigger(e, id) {
-        e.preventDefault(); // イベントの重複（クリックとタッチ両方反応するの）を防止
+        e.preventDefault(); 
         togglePlay(id);
     }
 
@@ -113,29 +110,24 @@
         const junrenAudio = document.getElementById('audio-junren');
         
         if (currentAudio.paused) {
-            // タッチした瞬間にラグなしで即座に再生
             currentAudio.play().catch(error => console.log("再生エラー:", error));
             currentButton.innerText = '停止する';
             currentButton.classList.add('playing');
 
             if (currentId === 'pasta') {
-                // 本編の音量を消音にする
                 junrenAudio.volume = 0;
 
-                // 以前の監視タイマーがあればクリア
                 if (checkInterval) clearInterval(checkInterval);
 
-                // 0.05秒(50ミリ秒)ごとに、喋り終わる秒数を過ぎていないか監視する高精度タイマー
+                // 再生位置を高速で監視
                 checkInterval = setInterval(function() {
-                    // 設定した秒数を1ミリ秒でも超えた瞬間、あるいは曲が物理的に終わったら音量を戻す
                     if (currentAudio.currentTime >= unmuteTime || currentAudio.paused) {
                         junrenAudio.volume = 1.0;
-                        clearInterval(checkInterval); // 役目が終わったらタイマー停止
+                        clearInterval(checkInterval);
                     }
-                }, 50);
+                }, 30); // 監視スピードをさらに上げて精度をアップ
             }
         } else {
-            // 手動ストップ
             currentAudio.pause();
             currentAudio.currentTime = 0;
             currentButton.innerText = '再生する';
@@ -147,7 +139,6 @@
             }
         }
 
-        // 曲が最後まで完全に終わった時
         currentAudio.onended = function() {
             currentButton.innerText = '再生する';
             currentButton.classList.remove('playing');
