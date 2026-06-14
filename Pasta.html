@@ -6,10 +6,10 @@
     <title>パスタ作ったお前</title>
     <style>
         :root {
-            --main-color: #e04534;
-            --bg-color: #fff9f3;
+            --main-color: #e04534; /* トマト赤 */
+            --bg-color: #fff9f3;   /* パスタベージュ */
             --text-color: #333;
-            --accent-color: #4caf50;
+            --accent-color: #4caf50; /* バジル緑 */
         }
 
         body {
@@ -23,8 +23,6 @@
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            user-select: none; /* 長押し時に文字選択の青いハイライトが出ないようにする */
-            -webkit-user-select: none;
         }
 
         .container {
@@ -97,12 +95,6 @@
             box-shadow: 0 4px 6px rgba(76, 175, 80, 0.2);
         }
 
-        /* 押しっぱなしの時の見た目 */
-        .btn:active, .btn.pressing {
-            transform: scale(0.95);
-            background-color: #b02e21;
-        }
-
         footer {
             margin-top: 30px;
             font-size: 0.8rem;
@@ -114,27 +106,22 @@
 
 <div class="container">
     <h1>パスタ作ったお前</h1>
+    <p class="subtitle">~ 大親友の彼女のツレの味 ~</p>
 
     <div class="player-card">
-        <div class="player-title">パスタ作ったお前</div>
-        <button class="btn" id="btn-pasta" 
-                onclick="togglePlay('pasta')"
-                onmousedown="muteSong(true)" 
-                onmouseup="muteSong(false)" 
-                onmouseleave="muteSong(false)"
-                ontouchstart="muteSong(true)" 
-                ontouchend="muteSong(false)">再生する</button>
+        <div class="player-title">🎵 詠唱（パスタ作ったお前）</div>
+        <button class="btn" id="btn-pasta" onclick="togglePlay('pasta')">再生する</button>
         <audio id="audio-pasta" src="Pasta/pasta.mp3" preload="auto"></audio>
     </div>
 
     <div class="player-card">
-        <div class="player-title">純恋歌</div>
+        <div class="player-title">🎤 本編（純恋歌）</div>
         <button class="btn" id="btn-junren" onclick="togglePlay('junren')">再生する</button>
         <audio id="audio-junren" src="Pasta/song.mp3" preload="auto"></audio>
     </div>
 
     <footer>
-        <p>&copy; 2026 パスタ作ったお前</p>
+        <p>&copy; 2026 パスタ作ったお前応援団</p>
     </footer>
 </div>
 
@@ -142,38 +129,43 @@
     function togglePlay(currentId) {
         const currentAudio = document.getElementById('audio-' + currentId);
         const currentButton = document.getElementById('btn-' + currentId);
+        const junrenAudio = document.getElementById('audio-junren');
         
         if (currentAudio.paused) {
+            // 再生スタート
             currentAudio.play().catch(function(error) {
                 console.log("再生エラー:", error);
             });
             currentButton.innerText = '停止する';
             currentButton.classList.add('playing');
+
+            // 【対策】mutedではなく、音量(volume)を直接 0 (消音) にする
+            if (currentId === 'pasta') {
+                junrenAudio.volume = 0;
+            }
         } else {
+            // 手動ストップ
             currentAudio.pause();
             currentAudio.currentTime = 0;
             currentButton.innerText = '再生する';
             currentButton.classList.remove('playing');
+
+            // 【対策】音量を元の 1.0 (100%) に戻す
+            if (currentId === 'pasta') {
+                junrenAudio.volume = 1.0;
+            }
         }
 
+        // 曲が最後まで流れ終わった時
         currentAudio.onended = function() {
             currentButton.innerText = '再生する';
             currentButton.classList.remove('playing');
+
+            // 【対策】最後まで終わったら音量を 1.0 に戻す
+            if (currentId === 'pasta') {
+                junrenAudio.volume = 1.0;
+            }
         };
-    }
-
-    // 【新機能】上のボタンを押している間だけ下のsong.mp3をミュートにする関数
-    function muteSong(isMute) {
-        const junrenAudio = document.getElementById('audio-junren');
-        const pastaButton = document.getElementById('btn-pasta');
-
-        if (isMute) {
-            junrenAudio.muted = true;
-            pastaButton.classList.add('pressing');
-        } else {
-            junrenAudio.muted = false;
-            pastaButton.classList.remove('pressing');
-        }
     }
 </script>
 
