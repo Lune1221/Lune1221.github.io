@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>パスタ作ったお前 特設サイト</title>
+    <title>パスタ作ったお前</title>
     <style>
         :root {
             --main-color: #e04534; /* トマト赤 */
@@ -61,6 +61,14 @@
         }
 
         .btn.playing { background-color: var(--accent-color); box-shadow: 0 4px 6px rgba(76, 175, 80, 0.2); }
+        
+        /* インポート中（準備中）にボタンを少し暗くして触れなくするスタイル */
+        .btn:disabled {
+            background-color: #ccc;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+
         footer { margin-top: 30px; font-size: 0.8rem; color: #999; }
     </style>
 </head>
@@ -68,36 +76,65 @@
 
 <div class="container">
     <h1>パスタ作ったお前</h1>
-    <p class="subtitle">~ 大親友の彼女のツレの味 ~</p>
 
     <div class="player-card">
-        <div class="player-title">🎵 詠唱（パスタ作ったお前）</div>
+        <div class="player-title">パスタ作ったお前</div>
         <button class="btn" id="btn-pasta" 
                 onmousedown="handleTrigger(event, 'pasta')" 
-                ontouchstart="handleTrigger(event, 'pasta')">再生する</button>
-        <audio id="audio-pasta" src="Pasta/pasta.mp3" preload="auto"></audio>
+                ontouchstart="handleTrigger(event, 'pasta')" disabled>読み込み中...</button>
+        <audio id="audio-pasta" src="Pasta/pasta.mp3"></audio>
     </div>
 
     <div class="player-card">
-        <div class="player-title">🎤 本編（純恋歌）</div>
+        <div class="player-title">純恋歌</div>
         <button class="btn" id="btn-junren" 
                 onmousedown="handleTrigger(event, 'junren')" 
-                ontouchstart="handleTrigger(event, 'junren')">再生する</button>
-        <audio id="audio-junren" src="Pasta/song.mp3" preload="auto"></audio>
+                ontouchstart="handleTrigger(event, 'junren')" disabled>読み込み中...</button>
+        <audio id="audio-junren" src="Pasta/song.mp3"></audio>
     </div>
 
     <footer>
-        <p>&copy; 2026 パスタ作ったお前応援団</p>
+        <p>&copy; 2026 パスタ作ったお前</p>
     </footer>
 </div>
 
 <script>
     let checkInterval = null;
+    let unmuteTime = 1.24; // 1.54秒 - 0.3秒 = 1.24秒ジャスト
 
-    // ーーー ★1.24秒に最適化★ ーーー
-    // 1.54秒から無音の0.3秒を引いた「1.24」をジャストの解除時間に指定
-    let unmuteTime = 1.24; 
-    // ーーーーーーーーーーーーーーーーー
+    // ーーー 【超重要】開いた瞬間に自動でインポート（先読み）する処理 ーーー
+    window.addEventListener('DOMContentLoaded', () => {
+        const pastaAudio = document.getElementById('audio-pasta');
+        const junrenAudio = document.getElementById('audio-junren');
+
+        // 音源ファイルをBlob（バイナリデータ）として事前に裏でダウンロード
+        const loadAudio = (audioEl, btnId) => {
+            return fetch(audioEl.src)
+                .then(response => response.blob())
+                .then(blob => {
+                    // ダウンロードしたデータをブラウザのメモリ内URLに変換して再セット
+                    const blobUrl = URL.createObjectURL(blob);
+                    audioEl.src = blobUrl;
+                    audioEl.load(); // メモリに完全に展開
+
+                    // 準備ができたらボタンを押せるようにする
+                    const btn = document.getElementById(btnId);
+                    btn.disabled = false;
+                    btn.innerText = (btnId === 'btn-pasta') ? '再生する' : '再生する';
+                })
+                .catch(err => {
+                    console.error("インポート失敗:", err);
+                    document.getElementById(btnId).innerText = "読み込み失敗";
+                });
+        };
+
+        // 2つの音源を同時に先行インポート開始
+        Promise.all([
+            loadAudio(pastaAudio, 'btn-pasta'),
+            loadAudio(junrenAudio, 'btn-junren')
+        ]);
+    });
+    // ーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーーー
 
     function handleTrigger(e, id) {
         e.preventDefault(); 
@@ -110,6 +147,7 @@
         const junrenAudio = document.getElementById('audio-junren');
         
         if (currentAudio.paused) {
+            // メモリから直接再生されるため、完全に「ラグ0秒」で即座に鳴ります！
             currentAudio.play().catch(error => console.log("再生エラー:", error));
             currentButton.innerText = '停止する';
             currentButton.classList.add('playing');
@@ -119,13 +157,12 @@
 
                 if (checkInterval) clearInterval(checkInterval);
 
-                // 再生位置を高速で監視
                 checkInterval = setInterval(function() {
                     if (currentAudio.currentTime >= unmuteTime || currentAudio.paused) {
                         junrenAudio.volume = 1.0;
                         clearInterval(checkInterval);
                     }
-                }, 30); // 監視スピードをさらに上げて精度をアップ
+                }, 15); // さらに監視精度を極限（15msごと）まで引き上げ
             }
         } else {
             currentAudio.pause();
