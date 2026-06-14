@@ -23,6 +23,8 @@
             align-items: center;
             justify-content: center;
             min-height: 100vh;
+            user-select: none; /* 長押し時に文字選択の青いハイライトが出ないようにする */
+            -webkit-user-select: none;
         }
 
         .container {
@@ -90,10 +92,15 @@
             transform: scale(1.03);
         }
 
-        
         .btn.playing {
             background-color: var(--accent-color);
             box-shadow: 0 4px 6px rgba(76, 175, 80, 0.2);
+        }
+
+        /* 押しっぱなしの時の見た目 */
+        .btn:active, .btn.pressing {
+            transform: scale(0.95);
+            background-color: #b02e21;
         }
 
         footer {
@@ -110,7 +117,13 @@
 
     <div class="player-card">
         <div class="player-title">パスタ作ったお前</div>
-        <button class="btn" id="btn-pasta" onclick="togglePlay('pasta')">再生する</button>
+        <button class="btn" id="btn-pasta" 
+                onclick="togglePlay('pasta')"
+                onmousedown="muteSong(true)" 
+                onmouseup="muteSong(false)" 
+                onmouseleave="muteSong(false)"
+                ontouchstart="muteSong(true)" 
+                ontouchend="muteSong(false)">再生する</button>
         <audio id="audio-pasta" src="Pasta/pasta.mp3" preload="auto"></audio>
     </div>
 
@@ -130,29 +143,37 @@
         const currentAudio = document.getElementById('audio-' + currentId);
         const currentButton = document.getElementById('btn-' + currentId);
         
-        // 【変更点】もう片方のオーディオを止める処理（以前あったやつ）を完全に削除しました！
-
         if (currentAudio.paused) {
-            // 再生する
             currentAudio.play().catch(function(error) {
                 console.log("再生エラー:", error);
-                alert("音源の読み込みに失敗しました。");
             });
             currentButton.innerText = '停止する';
             currentButton.classList.add('playing');
         } else {
-            // 停止する
             currentAudio.pause();
-            currentAudio.currentTime = 0; // 止めたら最初に戻す
+            currentAudio.currentTime = 0;
             currentButton.innerText = '再生する';
             currentButton.classList.remove('playing');
         }
 
-        // 曲が最後まで流れ終わったらボタンを元に戻す
         currentAudio.onended = function() {
             currentButton.innerText = '再生する';
             currentButton.classList.remove('playing');
         };
+    }
+
+    // 【新機能】上のボタンを押している間だけ下のsong.mp3をミュートにする関数
+    function muteSong(isMute) {
+        const junrenAudio = document.getElementById('audio-junren');
+        const pastaButton = document.getElementById('btn-pasta');
+
+        if (isMute) {
+            junrenAudio.muted = true;
+            pastaButton.classList.add('pressing');
+        } else {
+            junrenAudio.muted = false;
+            pastaButton.classList.remove('pressing');
+        }
     }
 </script>
 
