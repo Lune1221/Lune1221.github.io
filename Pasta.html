@@ -116,23 +116,28 @@
     // 音量復活のタイミング
     const unmuteTime = 1.54; 
 
+    // 【iPad Safari対策】ユーザーが最初に画面を触った瞬間に音声エンジンを「完全起動」させる関数
+    function wakeupSafari() {
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+        // 音の出ない一瞬のダミーノイズを再生してエンジンを温める
+        const buffer = audioCtx.createBuffer(1, 1, audioCtx.sampleRate);
+        const source = audioCtx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(audioCtx.destination);
+        source.start(0);
+
+        // 一度起こせば十分なので、イベントリスナーを解除してメモリを節約する
+        window.removeEventListener('touchstart', wakeupSafari);
+        window.removeEventListener('mousedown', wakeupSafari);
+    }
+    // 画面のどこかをタッチ、またはクリックした瞬間に実行
+    window.addEventListener('touchstart', wakeupSafari, { passive: true });
+    window.addEventListener('mousedown', wakeupSafari, { passive: true });
+
     // ーーー ページを開いた瞬間に音声データを先読みしてデコード ーーー
     window.addEventListener('DOMContentLoaded', () => {
-        // 音声エンジンの「3秒待ち（スリープ）」を防ぐための無音再生
-        // ページを開いた直後に一度だけ強制的に起こします
-        const wakeupCtx = () => {
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
-            // 0.001秒の無音ノイズを作って一瞬だけ流す（音は聞こえません）
-            const buffer = audioCtx.createBuffer(1, 1, audioCtx.sampleRate);
-            const source = audioCtx.createBufferSource();
-            source.buffer = buffer;
-            source.connect(audioCtx.destination);
-            source.start(0);
-        };
-        wakeupCtx();
-
         const loadAudio = async (id) => {
             try {
                 const response = await fetch(audioUrls[id]);
@@ -155,7 +160,7 @@
     async function handleTrigger(e, id) {
         e.preventDefault(); 
         
-        // ボタンを押した瞬間にも確実にスリープから復帰（非同期の待ちを防止）
+        // ボタンを押した瞬間、最優先で音声エンジンをアクティブにする（iOSのブロックを力技で突破）
         if (audioCtx.state === 'suspended') {
             await audioCtx.resume();
         }
