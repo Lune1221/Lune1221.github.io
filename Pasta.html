@@ -6,25 +6,21 @@
     <title>パスタ作ったお前 特設サイト</title>
     <style>
         :root {
-            --main-color: #e04534; /* トマト赤 */
-            --bg-color: #fff9f3;   /* パスタベージュ */
+            --main-color: #e04534;
+            --bg-color: #fff9f3;
             --text-color: #333;
-            --accent-color: #4caf50; /* バジル緑 */
+            --accent-color: #4caf50;
         }
-
         body {
-            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', sans-serif;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
             margin: 0;
-            padding: 0;
             display: flex;
-            flex-direction: column;
-            align-items: center;
             justify-content: center;
+            align-items: center;
             min-height: 100vh;
         }
-
         .container {
             text-align: center;
             background: white;
@@ -36,70 +32,14 @@
             border: 3px solid var(--main-color);
             box-sizing: border-box;
         }
-
-        h1 {
-            color: var(--main-color);
-            font-size: 2.3rem;
-            margin-top: 0;
-            margin-bottom: 10px;
-            font-weight: 900;
-        }
-
-        .subtitle {
-            font-size: 1.1rem;
-            color: #666;
-            margin-bottom: 30px;
-        }
-
-        .player-card {
-            background: #fafafa;
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 20px;
-            border: 1px solid #eee;
-            transition: transform 0.2s;
-        }
-
-        .player-card:hover {
-            transform: translateY(-2px);
-        }
-
-        .player-title {
-            font-weight: bold;
-            font-size: 1.2rem;
-            margin-bottom: 15px;
-        }
-
-        .btn {
-            background-color: var(--main-color);
-            color: white;
-            border: none;
-            padding: 14px 24px;
-            font-size: 1.1rem;
-            font-weight: bold;
-            border-radius: 50px;
-            cursor: pointer;
-            transition: all 0.2s;
-            box-shadow: 0 4px 6px rgba(224, 69, 52, 0.2);
-            width: 80%;
-            display: inline-block;
-        }
-
-        .btn:hover {
-            background-color: #c83728;
-            transform: scale(1.03);
-        }
-
-        .btn.playing {
-            background-color: var(--accent-color);
-            box-shadow: 0 4px 6px rgba(76, 175, 80, 0.2);
-        }
-
-        footer {
-            margin-top: 30px;
-            font-size: 0.8rem;
-            color: #999;
-        }
+        h1 { color: var(--main-color); font-size: 2.3rem; margin-bottom: 10px; font-weight: 900; }
+        .subtitle { font-size: 1.1rem; color: #666; margin-bottom: 30px; }
+        .player-card { background: #fafafa; border-radius: 15px; padding: 20px; margin-bottom: 20px; border: 1px solid #eee; }
+        .player-title { font-weight: bold; font-size: 1.2rem; margin-bottom: 15px; }
+        .btn { background-color: var(--main-color); color: white; border: none; padding: 14px 24px; font-size: 1.1rem; font-weight: bold; border-radius: 50px; cursor: pointer; transition: all 0.2s; width: 80%; }
+        .btn:hover { background-color: #c83728; transform: scale(1.03); }
+        .btn.playing { background-color: var(--accent-color); }
+        footer { margin-top: 30px; font-size: 0.8rem; color: #999; }
     </style>
 </head>
 <body>
@@ -111,13 +51,13 @@
     <div class="player-card">
         <div class="player-title">🎵 詠唱（パスタ作ったお前）</div>
         <button class="btn" id="btn-pasta" onclick="togglePlay('pasta')">再生する</button>
-        <audio id="audio-pasta" src="https://raw.githubusercontent.com/Lune1221/Lune1221.github.io/main/Pasta/%E3%83%91%E3%82%B9%E3%82%BF%E4%BD%9C%E3%81%A3%E3%81%9F%E3%81%8A%E5%89%8D.mp3" preload="auto"></audio>
+        <audio id="audio-pasta" src="Pasta/pasta.mp3" preload="auto"></audio>
     </div>
 
     <div class="player-card">
         <div class="player-title">🎤 本編（純恋歌）</div>
         <button class="btn" id="btn-junren" onclick="togglePlay('junren')">再生する</button>
-        <audio id="audio-junren" src="https://raw.githubusercontent.com/Lune1221/Lune1221.github.io/main/Pasta/%E7%B4%94%E6%81%8B%E6%AD%8C.mp3" preload="auto"></audio>
+        <audio id="audio-junren" src="Pasta/song.mp3" preload="auto"></audio>
     </div>
 
     <footer>
@@ -129,7 +69,6 @@
     function togglePlay(currentId) {
         const currentAudio = document.getElementById('audio-' + currentId);
         const currentButton = document.getElementById('btn-' + currentId);
-        
         const otherId = (currentId === 'pasta') ? 'junren' : 'pasta';
         const otherAudio = document.getElementById('audio-' + otherId);
         const otherButton = document.getElementById('btn-' + otherId);
@@ -142,9 +81,8 @@
         }
 
         if (currentAudio.paused) {
-            currentAudio.play().catch(function(error) {
-                console.log("再生エラー:", error);
-                alert("音源の読み込みに失敗しました。Rawのリンクが有効か確認してください。");
+            currentAudio.play().catch(error => {
+                alert("音源の読み込みに失敗しました。ファイル名が「pasta.mp3」「song.mp3」になっているか確認してください。");
             });
             currentButton.innerText = '停止する';
             currentButton.classList.add('playing');
@@ -155,12 +93,11 @@
             currentButton.classList.remove('playing');
         }
 
-        currentAudio.onended = function() {
+        currentAudio.onended = () => {
             currentButton.innerText = '再生する';
             currentButton.classList.remove('playing');
         };
     }
 </script>
-
 </body>
 </html>
