@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>パスタ作ったお前</title>
+    <title>パスタ作ったお前 特設サイト</title>
     <style>
         :root {
             --main-color: #e04534; /* トマト赤 */
@@ -106,21 +106,22 @@
 
 <div class="container">
     <h1>パスタ作ったお前</h1>
+    <p class="subtitle">~ 大親友の彼女のツレの味 ~</p>
 
     <div class="player-card">
-        <div class="player-title">パスタ作ったお前</div>
+        <div class="player-title">🎵 詠唱（パスタ作ったお前）</div>
         <button class="btn" id="btn-pasta" onclick="togglePlay('pasta')">再生する</button>
-        <audio id="audio-pasta" src="Pasta/パスタ作ったお前.mp3" preload="auto"></audio>
+        <audio id="audio-pasta" src="https://raw.githubusercontent.com/Lune1221/Lune1221.github.io/main/Pasta/%E3%83%91%E3%82%B9%E3%82%BF%E4%BD%9C%E3%81%A3%E3%81%9F%E3%81%8A%E5%89%8D.mp3" preload="auto"></audio>
     </div>
 
     <div class="player-card">
-        <div class="player-title">純恋歌</div>
+        <div class="player-title">🎤 本編（純恋歌）</div>
         <button class="btn" id="btn-junren" onclick="togglePlay('junren')">再生する</button>
-        <audio id="audio-junren" src="Pasta/純恋歌.mp3" preload="auto"></audio>
+        <audio id="audio-junren" src="https://raw.githubusercontent.com/Lune1221/Lune1221.github.io/main/Pasta/%E7%B4%94%E6%81%8B%E6%AD%8C.mp3" preload="auto"></audio>
     </div>
 
     <footer>
-        <p>&copy; 2026 パスタ作ったお前</p>
+        <p>&copy; 2026 パスタ作ったお前応援団</p>
     </footer>
 </div>
 
@@ -143,7 +144,7 @@
         if (currentAudio.paused) {
             currentAudio.play().catch(function(error) {
                 console.log("再生エラー:", error);
-                alert("音源の読み込みに失敗しました。ファイルの位置を確認してください。");
+                alert("音源の読み込みに失敗しました。Rawのリンクが有効か確認してください。");
             });
             currentButton.innerText = '停止する';
             currentButton.classList.add('playing');
