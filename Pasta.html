@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>パスタ作ったお前 特設サイト</title>
+    <title>パスタ作ったお前</title>
     <style>
         :root {
             --main-color: #e04534;
@@ -11,16 +11,20 @@
             --text-color: #333;
             --accent-color: #4caf50;
         }
+
         body {
-            font-family: 'Helvetica Neue', Arial, sans-serif;
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
             margin: 0;
+            padding: 0;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
+            justify-content: center;
             min-height: 100vh;
         }
+
         .container {
             text-align: center;
             background: white;
@@ -32,36 +36,92 @@
             border: 3px solid var(--main-color);
             box-sizing: border-box;
         }
-        h1 { color: var(--main-color); font-size: 2.3rem; margin-bottom: 10px; font-weight: 900; }
-        .subtitle { font-size: 1.1rem; color: #666; margin-bottom: 30px; }
-        .player-card { background: #fafafa; border-radius: 15px; padding: 20px; margin-bottom: 20px; border: 1px solid #eee; }
-        .player-title { font-weight: bold; font-size: 1.2rem; margin-bottom: 15px; }
-        .btn { background-color: var(--main-color); color: white; border: none; padding: 14px 24px; font-size: 1.1rem; font-weight: bold; border-radius: 50px; cursor: pointer; transition: all 0.2s; width: 80%; }
-        .btn:hover { background-color: #c83728; transform: scale(1.03); }
-        .btn.playing { background-color: var(--accent-color); }
-        footer { margin-top: 30px; font-size: 0.8rem; color: #999; }
+
+        h1 {
+            color: var(--main-color);
+            font-size: 2.3rem;
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-weight: 900;
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .player-card {
+            background: #fafafa;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #eee;
+            transition: transform 0.2s;
+        }
+
+        .player-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .player-title {
+            font-weight: bold;
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+        }
+
+        .btn {
+            background-color: var(--main-color);
+            color: white;
+            border: none;
+            padding: 14px 24px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px rgba(224, 69, 52, 0.2);
+            width: 80%;
+            display: inline-block;
+        }
+
+        .btn:hover {
+            background-color: #c83728;
+            transform: scale(1.03);
+        }
+
+        
+        .btn.playing {
+            background-color: var(--accent-color);
+            box-shadow: 0 4px 6px rgba(76, 175, 80, 0.2);
+        }
+
+        footer {
+            margin-top: 30px;
+            font-size: 0.8rem;
+            color: #999;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h1>パスタ作ったお前</h1>
-    <p class="subtitle">~ 大親友の彼女のツレの味 ~</p>
 
     <div class="player-card">
-        <div class="player-title">🎵 詠唱（パスタ作ったお前）</div>
+        <div class="player-title">パスタ作ったお前</div>
         <button class="btn" id="btn-pasta" onclick="togglePlay('pasta')">再生する</button>
         <audio id="audio-pasta" src="Pasta/pasta.mp3" preload="auto"></audio>
     </div>
 
     <div class="player-card">
-        <div class="player-title">🎤 本編（純恋歌）</div>
+        <div class="player-title">純恋歌</div>
         <button class="btn" id="btn-junren" onclick="togglePlay('junren')">再生する</button>
         <audio id="audio-junren" src="Pasta/song.mp3" preload="auto"></audio>
     </div>
 
     <footer>
-        <p>&copy; 2026 パスタ作ったお前応援団</p>
+        <p>&copy; 2026 パスタ作ったお前</p>
     </footer>
 </div>
 
@@ -69,35 +129,32 @@
     function togglePlay(currentId) {
         const currentAudio = document.getElementById('audio-' + currentId);
         const currentButton = document.getElementById('btn-' + currentId);
-        const otherId = (currentId === 'pasta') ? 'junren' : 'pasta';
-        const otherAudio = document.getElementById('audio-' + otherId);
-        const otherButton = document.getElementById('btn-' + otherId);
         
-        if (!otherAudio.paused) {
-            otherAudio.pause();
-            otherAudio.currentTime = 0;
-            otherButton.innerText = '再生する';
-            otherButton.classList.remove('playing');
-        }
+        // 【変更点】もう片方のオーディオを止める処理（以前あったやつ）を完全に削除しました！
 
         if (currentAudio.paused) {
-            currentAudio.play().catch(error => {
-                alert("音源の読み込みに失敗しました。ファイル名が「pasta.mp3」「song.mp3」になっているか確認してください。");
+            // 再生する
+            currentAudio.play().catch(function(error) {
+                console.log("再生エラー:", error);
+                alert("音源の読み込みに失敗しました。");
             });
             currentButton.innerText = '停止する';
             currentButton.classList.add('playing');
         } else {
+            // 停止する
             currentAudio.pause();
-            currentAudio.currentTime = 0;
+            currentAudio.currentTime = 0; // 止めたら最初に戻す
             currentButton.innerText = '再生する';
             currentButton.classList.remove('playing');
         }
 
-        currentAudio.onended = () => {
+        // 曲が最後まで流れ終わったらボタンを元に戻す
+        currentAudio.onended = function() {
             currentButton.innerText = '再生する';
             currentButton.classList.remove('playing');
         };
     }
 </script>
+
 </body>
 </html>
