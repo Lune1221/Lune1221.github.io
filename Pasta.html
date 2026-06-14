@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>パスタ作ったお前 特設サイト</title>
+    <title>パスタ作ったお前</title>
     <style>
         :root {
-            --main-color: #e04534;
-            --bg-color: #fff9f3;
+            --main-color: #e04534; /* トマト赤 */
+            --bg-color: #fff9f3;   /* パスタベージュ */
             --text-color: #333;
-            --accent-color: #4caf50;
+            --accent-color: #4caf50; /* バジル緑 */
         }
 
         body {
@@ -23,6 +23,10 @@
             align-items: center;
             justify-content: center;
             min-height: 100vh;
+            /* 連打したときにブラウザが文字選択や拡大をしないようにガード */
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
         }
 
         .container {
@@ -51,13 +55,13 @@
             font-weight: bold;
             border-radius: 50px;
             cursor: pointer;
-            transition: all 0.1s; /* 反応を早くするために少し短縮 */
-            box-shadow: 0 4px 6px rgba(224, 69, 52, 0.2);
             width: 80%;
             display: inline-block;
+            box-shadow: 0 4px 6px rgba(224, 69, 52, 0.2);
+            /* タップ時の標準ハイライトを無効化して自前の挙動にする */
+            -webkit-tap-highlight-color: transparent;
         }
 
-        .btn:hover { background-color: #c83728; transform: scale(1.03); }
         .btn.playing { background-color: var(--accent-color); box-shadow: 0 4px 6px rgba(76, 175, 80, 0.2); }
         footer { margin-top: 30px; font-size: 0.8rem; color: #999; }
     </style>
@@ -69,13 +73,17 @@
 
     <div class="player-card">
         <div class="player-title">パスタ作ったお前</div>
-        <button class="btn" id="btn-pasta" onclick="togglePlay('pasta')">再生する</button>
+        <button class="btn" id="btn-pasta" 
+                onmousedown="handleTrigger(event, 'pasta')" 
+                ontouchstart="handleTrigger(event, 'pasta')">再生する</button>
         <audio id="audio-pasta" src="Pasta/pasta.mp3" preload="auto"></audio>
     </div>
 
     <div class="player-card">
         <div class="player-title">純恋歌</div>
-        <button class="btn" id="btn-junren" onclick="togglePlay('junren')">再生する</button>
+        <button class="btn" id="btn-junren" 
+                onmousedown="handleTrigger(event, 'junren')" 
+                ontouchstart="handleTrigger(event, 'junren')">再生する</button>
         <audio id="audio-junren" src="Pasta/song.mp3" preload="auto"></audio>
     </div>
 
@@ -85,35 +93,46 @@
 </div>
 
 <script>
-    let muteTimer = null; // タイマー管理用の変数
+    let checkInterval = null; // 再生位置を監視するタイマー
+
+    // ーーー ★調整用設定★ ーーー
+    // 「〜ツレの味」と言い終わる「正確な秒数」です。
+    // 無音の時間が0.3秒余っているとのことなので、現在のファイル全体の長さから「0.3」引いた数値を指定するとジャストになります。
+    let unmuteTime = 4.2; 
+    // ーーーーーーーーーーーーーーー
+
+    // タッチやクリックが重複して2回発火するのを防ぎつつ、触れた瞬間に処理する関数
+    function handleTrigger(e, id) {
+        e.preventDefault(); // イベントの重複（クリックとタッチ両方反応するの）を防止
+        togglePlay(id);
+    }
 
     function togglePlay(currentId) {
         const currentAudio = document.getElementById('audio-' + currentId);
         const currentButton = document.getElementById('btn-' + currentId);
         const junrenAudio = document.getElementById('audio-junren');
         
-        // ーーー ★設定項目★ ーーー
-        // 「パスタ作ったお前」と言い終わる秒数をここに指定してください（小数点の指定もOK）
-        let speechDuration = 4.5; 
-        // ーーーーーーーーーーーーー
-
         if (currentAudio.paused) {
-            // 再生スタート
+            // タッチした瞬間にラグなしで即座に再生
             currentAudio.play().catch(error => console.log("再生エラー:", error));
             currentButton.innerText = '停止する';
             currentButton.classList.add('playing');
 
             if (currentId === 'pasta') {
-                // 本編の音量をゼロにする
+                // 本編の音量を消音にする
                 junrenAudio.volume = 0;
 
-                // 前のタイマーが残っていれば一回クリア
-                if (muteTimer) clearTimeout(muteTimer);
+                // 以前の監視タイマーがあればクリア
+                if (checkInterval) clearInterval(checkInterval);
 
-                // 指定した秒数（ミリ秒換算）が経ったら、曲の終了を待たずに音量を戻す！
-                muteTimer = setTimeout(function() {
-                    junrenAudio.volume = 1.0;
-                }, speechDuration * 1000);
+                // 0.05秒(50ミリ秒)ごとに、喋り終わる秒数を過ぎていないか監視する高精度タイマー
+                checkInterval = setInterval(function() {
+                    // 設定した秒数を1ミリ秒でも超えた瞬間、あるいは曲が物理的に終わったら音量を戻す
+                    if (currentAudio.currentTime >= unmuteTime || currentAudio.paused) {
+                        junrenAudio.volume = 1.0;
+                        clearInterval(checkInterval); // 役目が終わったらタイマー停止
+                    }
+                }, 50);
             }
         } else {
             // 手動ストップ
@@ -124,22 +143,22 @@
 
             if (currentId === 'pasta') {
                 junrenAudio.volume = 1.0;
-                if (muteTimer) clearTimeout(muteTimer); // タイマー解除
+                if (checkInterval) clearInterval(checkInterval);
             }
         }
 
-        // 曲が最後まで完全に流れ終わった時
+        // 曲が最後まで完全に終わった時
         currentAudio.onended = function() {
             currentButton.innerText = '再生する';
             currentButton.classList.remove('playing');
 
             if (currentId === 'pasta') {
                 junrenAudio.volume = 1.0;
-                if (muteTimer) clearTimeout(muteTimer);
+                if (checkInterval) clearInterval(checkInterval);
             }
         };
     }
 </script>
 
-</head>
+</body>
 </html>
