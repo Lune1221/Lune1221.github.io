@@ -90,7 +90,6 @@
             transform: scale(1.03);
         }
 
-        /* 再生中のスタイル */
         .btn.playing {
             background-color: var(--accent-color);
             box-shadow: 0 4px 6px rgba(76, 175, 80, 0.2);
@@ -107,36 +106,34 @@
 
 <div class="container">
     <h1>パスタ作ったお前</h1>
+    <p class="subtitle">~ 大親友の彼女のツレの味 ~</p>
 
     <div class="player-card">
-        <div class="player-title">パスタ作ったお前</div>
+        <div class="player-title">🎵 詠唱（パスタ作ったお前）</div>
         <button class="btn" id="btn-pasta" onclick="togglePlay('pasta')">再生する</button>
-        <audio id="audio-pasta" src="パスタ作ったお前.mp3" preload="auto"></audio>
+        <audio id="audio-pasta" src="Pasta/パスタ作ったお前.mp3" preload="auto"></audio>
     </div>
 
     <div class="player-card">
-        <div class="player-title">純恋歌</div>
+        <div class="player-title">🎤 本編（純恋歌）</div>
         <button class="btn" id="btn-junren" onclick="togglePlay('junren')">再生する</button>
-        <audio id="audio-junren" src="純恋歌.mp3" preload="auto"></audio>
+        <audio id="audio-junren" src="Pasta/純恋歌.mp3" preload="auto"></audio>
     </div>
 
     <footer>
-        <p>&copy; 2026 パスタ作ったお前</p>
+        <p>&copy; 2026 パスタ作ったお前応援団</p>
     </footer>
 </div>
 
 <script>
     function togglePlay(currentId) {
-        // 現在クリックされた方の要素を取得
         const currentAudio = document.getElementById('audio-' + currentId);
         const currentButton = document.getElementById('btn-' + currentId);
         
-        // もう片方のIDを判定
         const otherId = (currentId === 'pasta') ? 'junren' : 'pasta';
         const otherAudio = document.getElementById('audio-' + otherId);
         const otherButton = document.getElementById('btn-' + otherId);
         
-        // 1. もう片方が再生中なら確実に止める
         if (!otherAudio.paused) {
             otherAudio.pause();
             otherAudio.currentTime = 0;
@@ -144,24 +141,20 @@
             otherButton.classList.remove('playing');
         }
 
-        // 2. 自分の再生・停止切り替え
         if (currentAudio.paused) {
-            // 再生する
             currentAudio.play().catch(function(error) {
                 console.log("再生エラー:", error);
-                alert("音源の読み込みに失敗したか、ブラウザが再生をブロックしました。");
+                alert("音源の読み込みに失敗しました。ファイルの位置を確認してください。");
             });
             currentButton.innerText = '停止する';
             currentButton.classList.add('playing');
         } else {
-            // 停止する
             currentAudio.pause();
-            currentAudio.currentTime = 0; // 曲を最初に戻す
+            currentAudio.currentTime = 0;
             currentButton.innerText = '再生する';
             currentButton.classList.remove('playing');
         }
 
-        // 3. 曲が最後まで流れ終わったらボタンを元に戻す
         currentAudio.onended = function() {
             currentButton.innerText = '再生する';
             currentButton.classList.remove('playing');
