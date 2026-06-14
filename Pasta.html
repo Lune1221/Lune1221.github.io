@@ -118,6 +118,21 @@
 
     // ーーー ページを開いた瞬間に音声データを先読みしてデコード ーーー
     window.addEventListener('DOMContentLoaded', () => {
+        // 音声エンジンの「3秒待ち（スリープ）」を防ぐための無音再生
+        // ページを開いた直後に一度だけ強制的に起こします
+        const wakeupCtx = () => {
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            // 0.001秒の無音ノイズを作って一瞬だけ流す（音は聞こえません）
+            const buffer = audioCtx.createBuffer(1, 1, audioCtx.sampleRate);
+            const source = audioCtx.createBufferSource();
+            source.buffer = buffer;
+            source.connect(audioCtx.destination);
+            source.start(0);
+        };
+        wakeupCtx();
+
         const loadAudio = async (id) => {
             try {
                 const response = await fetch(audioUrls[id]);
@@ -137,12 +152,14 @@
         Promise.all([loadAudio('pasta'), loadAudio('junren')]);
     });
 
-    function handleTrigger(e, id) {
+    async function handleTrigger(e, id) {
         e.preventDefault(); 
-        // iOS/Androidなどのブラウザ制限を解除するためにコンテキストを再開
+        
+        // ボタンを押した瞬間にも確実にスリープから復帰（非同期の待ちを防止）
         if (audioCtx.state === 'suspended') {
-            audioCtx.resume();
+            await audioCtx.resume();
         }
+        
         togglePlay(id);
     }
 
@@ -154,6 +171,9 @@
             stopTrack(id);
             return;
         }
+
+        // 読み込みが完了していない場合は処理しない
+        if (!buffers[id]) return;
 
         // ソースノード（再生プレイヤーのようなもの）を作成
         const source = audioCtx.createBufferSource();
