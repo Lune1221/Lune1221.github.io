@@ -113,26 +113,25 @@
         junren: 'Pasta/song.mp3'
     };
 
-    // 音量復活のタイミング
-    const unmuteTime = 1.7; 
+    // ーーー【ここを調整！】音量復活のタイミング ーーー
+    // 1.54秒から「0.16秒」ほど空白（タメ）を伸ばして、1.70秒に設定しました。
+    // もっと空白が欲しければ 1.80 や 1.90 に増やしてください。
+    const unmuteTime = 1.70; 
 
-    // 【iPad Safari対策】ユーザーが最初に画面を触った瞬間に音声エンジンを起動させる関数
+    // 【iPad Safari対策】ユーザーが最初に画面を触った瞬間に音声エンジンを起動
     function wakeupSafari() {
         if (audioCtx.state === 'suspended') {
             audioCtx.resume();
         }
-        // 音の出ない一瞬のダミーノイズを再生してエンジンを温める
         const buffer = audioCtx.createBuffer(1, 1, audioCtx.sampleRate);
         const source = audioCtx.createBufferSource();
         source.buffer = buffer;
         source.connect(audioCtx.destination);
         source.start(0);
 
-        // 一度起こせば十分なので、イベントリスナーを解除してメモリを節約する
         window.removeEventListener('touchstart', wakeupSafari);
         window.removeEventListener('mousedown', wakeupSafari);
     }
-    // 画面のどこかをタッチ、またはクリックした瞬間に実行
     window.addEventListener('touchstart', wakeupSafari, { passive: true });
     window.addEventListener('mousedown', wakeupSafari, { passive: true });
 
@@ -142,7 +141,6 @@
             try {
                 const response = await fetch(audioUrls[id]);
                 const arrayBuffer = await response.arrayBuffer();
-                // 音声データをブラウザが即座に鳴らせる形式にデコードしてメモリに保存
                 buffers[id] = await audioCtx.decodeAudioData(arrayBuffer);
                 
                 const btn = document.getElementById(`btn-${id}`);
@@ -160,7 +158,6 @@
     async function handleTrigger(e, id) {
         e.preventDefault(); 
         
-        // ボタンを押した瞬間、最優先で音声エンジンをアクティブにする（iOSのブロックを力技で突破）
         if (audioCtx.state === 'suspended') {
             await audioCtx.resume();
         }
@@ -171,16 +168,13 @@
     function togglePlay(id) {
         const btn = document.getElementById(`btn-${id}`);
         
-        // 再生中の場合は停止する
         if (activeSources[id]) {
             stopTrack(id);
             return;
         }
 
-        // 読み込みが完了していない場合は処理しない
         if (!buffers[id]) return;
 
-        // ソースノード（再生プレイヤーのようなもの）を作成
         const source = audioCtx.createBufferSource();
         source.buffer = buffers[id];
         activeSources[id] = source;
@@ -191,34 +185,35 @@
         const startTime = audioCtx.currentTime;
 
         if (id === 'pasta') {
-            // パスタが再生されたとき、もし「純恋歌」がすでに流れていたら音量を制御する
             if (activeSources['junren'] && junrenGainNode) {
-                // ボタンを押した瞬間（startTime）に純恋歌のボリュームを0にする
+                // 【超重要】すでに設定されているかもしれない古い予定を一度すべて白紙に戻す
+                junrenGainNode.gain.cancelScheduledValues(startTime);
+                
+                // 現在の音量から、ボタンを押した瞬間に音量を0にする
+                junrenGainNode.gain.setValueAtTime(junrenGainNode.gain.value, startTime);
                 junrenGainNode.gain.setValueAtTime(0, startTime);
-                // 指定した秒数（startTime + unmuteTime）に、正確にボリュームを1.0に戻す予約を入れる
+                
+                // 指定した秒数（startTime + 1.70秒など）が来たら、正確に1.0に戻す
                 junrenGainNode.gain.setValueAtTime(1.0, startTime + unmuteTime);
             }
         } else if (id === 'junren') {
-            // 純恋歌の音量をコントロールするノードを作成して接続
             junrenGainNode = audioCtx.createGain();
+            // 初期音量は1.0に設定
+            junrenGainNode.gain.setValueAtTime(1.0, startTime);
             source.connect(junrenGainNode);
             junrenGainNode.connect(audioCtx.destination);
         }
 
-        // 純恋歌以外（パスタ）は直接スピーカーに接続
         if (id !== 'junren') {
             source.connect(audioCtx.destination);
         }
 
-        // 再生終了時の処理
         source.onended = () => {
-            // 自然に終了した場合のみボタン表示を元に戻す
             if (activeSources[id] === source) {
                 cleanupUI(id);
             }
         };
 
-        // 即座に再生開始
         source.start(startTime);
     }
 
@@ -237,8 +232,8 @@
         btn.innerText = '再生する';
         btn.classList.remove('playing');
 
-        // パスタが停止された、または終了した際、純恋歌がまだ流れていれば音量を1.0に強制復帰
         if (id === 'pasta' && activeSources['junren'] && junrenGainNode) {
+            // 途中で止めた場合も、残っている音量復活スケジュールを消して即座に1.0に戻す
             junrenGainNode.gain.cancelScheduledValues(audioCtx.currentTime);
             junrenGainNode.gain.setValueAtTime(1.0, audioCtx.currentTime);
         }
