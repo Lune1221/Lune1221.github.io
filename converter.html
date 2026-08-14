@@ -12,21 +12,11 @@
     <div class="container">
         <h1>音声ファイル変換・増幅ツール</h1>
         
+        <!-- ツールバー：変換先の指定と音量調整のみ -->
         <div class="toolbar" id="toolbar" style="display: flex; flex-direction: column; gap: 10px; align-items: center;">
             <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center; width: 100%; justify-content: center;">
                 <div>
-                    <label for="inputExtSelect" style="font-size: 13px; font-weight: bold;">変換元 (フィルタ):</label>
-                    <select id="inputExtSelect">
-                        <option value="all">すべてのファイル</option>
-                        <option value="wav">wav</option>
-                        <option value="mp3">mp3</option>
-                        <option value="m4a">m4a</option>
-                        <option value="flac">flac</option>
-                        <option value="ogg">ogg</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="globalExtSelect" style="font-size: 13px; font-weight: bold;">→ 変換先 (出力):</label>
+                    <label for="globalExtSelect" style="font-size: 13px; font-weight: bold;">一括拡張子 (変換先):</label>
                     <select id="globalExtSelect">
                         <option value="wav">wav</option>
                         <option value="mp3">mp3</option>
@@ -46,7 +36,7 @@
         <div class="drop-zone" id="dropZone">
             <p>音声ファイルを選択またはドロップ</p>
             <label class="btn" for="fileInput">ファイルを選ぶ</label>
-            <!-- accept属性を削除して全てのファイルを選択可能に -->
+            <!-- すべてのファイルを選択可能 -->
             <input type="file" id="fileInput" multiple>
         </div>
 
