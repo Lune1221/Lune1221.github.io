@@ -8,6 +8,8 @@ const batchVolumeSlider = document.getElementById('batchVolumeSlider');
 const batchVolumeNumber = document.getElementById('batchVolumeNumber');
 const fileListDiv = document.getElementById('fileList');
 const actionArea = document.getElementById('actionArea');
+const downloadAllBtn = document.getElementById('downloadAllBtn');
+const downloadZipBtn = document.getElementById('downloadZipBtn');
 
 let convertedFiles = [];
 let audioContext = null;
@@ -73,7 +75,9 @@ async function processAudioFile(file, ctx, customName, id, ext) {
             baseName: (customName || file.name).replace(/\.[^/.]+$/, ""), 
             extension: ext, 
             audioBuffer: buffer, 
-            volume: parseFloat(batchVolumeSlider.value) 
+            volume: parseFloat(batchVolumeSlider.value),
+            blob: null,
+            url: null
         };
         updateFileBlob(fileObj);
         convertedFiles.push(fileObj);
@@ -81,6 +85,19 @@ async function processAudioFile(file, ctx, customName, id, ext) {
         console.error("音声のデコードに失敗しました:", e);
     }
 }
+
+// 一括拡張子が変更されたときの処理
+globalExtSelect.addEventListener('change', () => {
+    const newExt = globalExtSelect.value;
+    if (convertedFiles.length === 0) return;
+
+    convertedFiles.forEach(fileObj => {
+        fileObj.extension = newExt;
+        updateFileBlob(fileObj);
+    });
+
+    renderFileList();
+});
 
 function renderFileList() {
     fileListDiv.innerHTML = '';
@@ -98,6 +115,32 @@ function renderFileList() {
     });
 }
 
+// 簡易ダウンロード・再生用ヘルパー
+window.downloadFile = (id) => {
+    const file = convertedFiles.find(f => f.id === id);
+    if (!file || !file.url) return;
+    const a = document.createElement('a');
+    a.href = file.url;
+    a.download = `${file.baseName}.${file.extension}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+};
+
+window.playAudioDirectly = (id) => {
+    const file = convertedFiles.find(f => f.id === id);
+    if (!file || !audioContext) return;
+    const source = audioContext.createBufferSource();
+    source.buffer = file.audioBuffer;
+    
+    const gainNode = audioContext.createGain();
+    gainNode.gain.value = file.volume;
+    
+    source.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    source.start(0);
+};
+
 // ZIP解凍処理
 async function getEntriesFromZip(file) {
     let zip = new JSZip();
@@ -111,3 +154,40 @@ async function getEntriesFromZip(file) {
     }
     return entries;
 }
+
+// 一括ダウンロード・ZIPダウンロードのボタン処理
+downloadAllBtn.addEventListener('click', () => {
+    convertedFiles.forEach((file, index) => {
+        setTimeout(() => {
+            const a = document.createElement('a');
+            a.href = file.url;
+            a.download = `${file.baseName}.${file.extension}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }, index * 300);
+    });
+});
+
+downloadZipBtn.addEventListener('click', async () => {
+    statusDiv.textContent = 'ZIPファイルを作成中...';
+    downloadZipBtn.disabled = true;
+
+    const zip = new JSZip();
+    convertedFiles.forEach(file => {
+        zip.file(`${file.baseName}.${file.extension}`, file.blob);
+    });
+
+    const content = await zip.generateAsync({ type: 'blob' });
+    const zipUrl = URL.createObjectURL(content);
+
+    const a = document.createElement('a');
+    a.href = zipUrl;
+    a.download = 'converted_audio_files.zip';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    statusDiv.textContent = 'ZIPのダウンロードが完了しました！';
+    downloadZipBtn.disabled = false;
+});
