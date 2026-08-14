@@ -18,7 +18,9 @@ const modalFileName = document.getElementById('modalFileName');
 
 let convertedFiles = [];
 let passwordResolver = null;
+let audioContext = null;
 let currentPlayingSource = null;
+let currentPlayingButton = null;
 
 // ドラッグ＆ドロップ設定
 ['dragenter', 'dragover'].forEach(eventName => {
@@ -66,7 +68,13 @@ async function handleFiles(files) {
     
     updateProgress(0, 'ファイルを準備中...');
 
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    // ユーザー操作の文脈でAudioContextを確実に生成
+    if (!audioContext || audioContext.state === 'closed') {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    } else if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+    }
+
     let allOggEntries = [];
 
     for (const file of files) {
@@ -118,12 +126,12 @@ async function processOggFile(file, audioContext, customName, id) {
         updateWavBlob(fileObj);
         convertedFiles.push(fileObj);
 
-        renderFileItem(fileObj, audioContext);
+        renderFileItem(fileObj);
     } catch (err) {
         console.error(err);
         const item = document.createElement('div');
         item.className = 'file-item';
-        item.innerHTML = `<span class="file-info">⚠️ ${file.name} (デコード失敗)</span>`;
+        item.innerHTML = `<span class="file-info" style="color: #e74c3c;">⚠️ ${file.name} (デコード失敗)</span>`;
         fileListDiv.appendChild(item);
     }
 }
@@ -135,19 +143,20 @@ function updateWavBlob(fileObj) {
     fileObj.url = URL.createObjectURL(fileObj.blob);
 }
 
-function renderFileItem(fileObj, audioContext) {
+function renderFileItem(fileObj) {
     const item = document.createElement('div');
     item.className = 'file-item';
     item.id = `file-item-${fileObj.id}`;
     
     item.innerHTML = `
-        <div class="file-info">
-            <div style="font-weight: bold; margin-bottom: 4px;">🎵 ${fileObj.name}</div>
-            <div style="font-size: 12px; color: #7f8c8d;">音量: <span id="vol-text-${fileObj.id}">100%</span></div>
+        <div class="file-info" title="${fileObj.name}">
+            <div style="font-weight: bold; margin-bottom: 2px;">🎵 ${fileObj.name}</div>
+            <div style="font-size: 11px; color: #7f8c8d;">音量: <span id="vol-text-${fileObj.id}">100%</span></div>
         </div>
         <div class="file-controls">
             <input type="range" class="volume-slider" id="slider-${fileObj.id}" min="0" max="3" step="0.05" value="${fileObj.volume}">
-            <button class="btn btn-sm" id="play-btn-${fileObj.id}">▶ デモ再生</button>
+            <button class="btn btn-sm" id="play-btn-${fileObj.id}">▶ 再生</button>
+            <button class="btn btn-sm btn-success" id="dl-btn-${fileObj.id}">💾 保存</button>
         </div>
     `;
     fileListDiv.appendChild(item);
@@ -155,30 +164,47 @@ function renderFileItem(fileObj, audioContext) {
     const slider = document.getElementById(`slider-${fileObj.id}`);
     const volText = document.getElementById(`vol-text-${fileObj.id}`);
     const playBtn = document.getElementById(`play-btn-${fileObj.id}`);
+    const dlBtn = document.getElementById(`dl-btn-${fileObj.id}`);
 
+    // スライダー変更
     slider.addEventListener('input', (e) => {
         fileObj.volume = parseFloat(e.target.value);
         volText.textContent = Math.round(fileObj.volume * 100) + '%';
         updateWavBlob(fileObj);
     });
 
-    playBtn.addEventListener('click', () => {
-        if (playBtn.textContent.includes('▶')) {
+    // 個別デモ再生ボタン
+    playBtn.addEventListener('click', async () => {
+        if (!audioContext) return;
+        if (audioContext.state === 'suspended') {
+            await audioContext.resume();
+        }
+
+        if (currentPlayingSource && currentPlayingButton === playBtn) {
             stopCurrentAudio();
-            playAudio(fileObj, audioContext, playBtn);
         } else {
             stopCurrentAudio();
+            playAudio(fileObj, playBtn);
         }
+    });
+
+    // 個別ダウンロードボタン
+    dlBtn.addEventListener('click', () => {
+        const a = document.createElement('a');
+        a.href = fileObj.url;
+        a.download = fileObj.name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
     });
 }
 
-// 試聴時にもしっかりと音量を反映（GainNodeを最大3倍まで有効化）
-function playAudio(fileObj, audioContext, btnElement) {
+// 試聴用オーディオ再生
+function playAudio(fileObj, btnElement) {
     const source = audioContext.createBufferSource();
     const gainNode = audioContext.createGain();
 
     source.buffer = fileObj.audioBuffer;
-    // スライダーの値をそのままゲインに反映（最大3倍までブースト）
     gainNode.gain.value = fileObj.volume;
 
     source.connect(gainNode);
@@ -186,12 +212,14 @@ function playAudio(fileObj, audioContext, btnElement) {
 
     source.start(0);
     currentPlayingSource = source;
+    currentPlayingButton = btnElement;
     btnElement.textContent = '⏹ 停止';
 
     source.onended = () => {
-        btnElement.textContent = '▶ デモ再生';
         if (currentPlayingSource === source) {
+            btnElement.textContent = '▶ 再生';
             currentPlayingSource = null;
+            currentPlayingButton = null;
         }
     };
 }
@@ -203,11 +231,13 @@ function stopCurrentAudio() {
         } catch(e) {}
         currentPlayingSource = null;
     }
-    document.querySelectorAll('[id^="play-btn-"]').forEach(btn => {
-        btn.textContent = '▶ デモ再生';
-    });
+    if (currentPlayingButton) {
+        currentPlayingButton.textContent = '▶ 再生';
+        currentPlayingButton = null;
+    }
 }
 
+// 一括音量変更スライダー
 batchVolumeSlider.addEventListener('input', (e) => {
     const val = parseFloat(e.target.value);
     batchVolumeText.textContent = Math.round(val * 100) + '%';
@@ -317,7 +347,7 @@ downloadZipBtn.addEventListener('click', async () => {
     downloadZipBtn.disabled = false;
 });
 
-// WAV変換と音量増幅ロジックの改善（スライダー範囲を最大300%に拡張）
+// WAV変換・増幅ロジック
 function bufferToWav(buffer, volume = 1.0) {
     const numOfChan = buffer.numberOfChannels;
     const sampleRate = buffer.sampleRate;
@@ -347,10 +377,6 @@ function bufferToWav(buffer, volume = 1.0) {
     view.setUint32(24, sampleRate, true);
     view.setUint32(28, sampleRate * numOfChan * (bitDepth / 8), true);
     view.setUint16(32, numOfChan * (bitDepth / 8), true);
-    view.setUint16(34, bitDifference = bitDepth, true); // (修正: bitDepth)
-
-    // 正確な書き込み用再設定
-    view.setUint16(32, numOfChan * (bitDepth / 8), true);
     view.setUint16(34, bitDepth, true);
 
     writeString(view, 36, 'data');
@@ -358,12 +384,9 @@ function bufferToWav(buffer, volume = 1.0) {
 
     let offset = 44;
     for (let i = 0; i < result.length; i++, offset += 2) {
-        // 音量を掛け算し、16bitの範囲内に収める（大きくブーストできるように調整）
         let s = result[i] * volume;
-        // 限界値（クリッピング）で自然に丸める処理
         if (s > 1.0) s = 1.0;
         if (s < -1.0) s = -1.0;
-        
         view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
     }
 
