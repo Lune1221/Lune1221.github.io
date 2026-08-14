@@ -1,6 +1,8 @@
 const fileInput = document.getElementById('fileInput');
 const dropZone = document.getElementById('dropZone');
 const statusDiv = document.getElementById('status');
+const progressContainer = document.getElementById('progressContainer');
+const progressBar = document.getElementById('progressBar');
 const fileListDiv = document.getElementById('fileList');
 const actionArea = document.getElementById('actionArea');
 const downloadAllBtn = document.getElementById('downloadAllBtn');
@@ -11,7 +13,7 @@ const zipPasswordInput = document.getElementById('zipPasswordInput');
 const submitPasswordBtn = document.getElementById('submitPasswordBtn');
 const modalFileName = document.getElementById('modalFileName');
 
-let convertedFiles = []; // { name, blob, url } の配列
+let convertedFiles = [];
 let passwordResolver = null;
 
 // ドラッグ＆ドロップ設定
@@ -37,6 +39,17 @@ fileInput.addEventListener('change', (e) => {
     handleFiles(e.target.files);
 });
 
+// 進捗バーを更新する補助関数
+function updateProgress(percent, text) {
+    progressContainer.style.display = 'block';
+    const p = Math.round(percent);
+    progressBar.style.width = p + '%';
+    progressBar.textContent = p + '%';
+    if (text) {
+        statusDiv.textContent = text;
+    }
+}
+
 // ファイルの振り分け処理
 async function handleFiles(files) {
     if (files.length === 0) return;
@@ -45,30 +58,46 @@ async function handleFiles(files) {
     fileListDiv.innerHTML = '';
     fileListDiv.style.display = 'block';
     actionArea.style.display = 'none';
-    statusDiv.textContent = 'ファイルを処理中...';
+    
+    updateProgress(0, 'ファイルを準備中...');
 
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
+    // 処理対象のファイルをリスト化（ZIPの中身も事前抽出のためにカウント）
+    let allOggEntries = [];
+
     for (const file of files) {
         if (file.name.toLowerCase().endsWith('.zip')) {
-            await handleZipFile(file, audioContext);
+            let zipEntries = await getOggEntriesFromZip(file);
+            allOggEntries.push(...zipEntries);
         } else if (file.name.toLowerCase().endsWith('.ogg') || file.type.includes('ogg')) {
-            await convertAndStoreOgg(file, audioContext);
+            allOggEntries.push({ file: file, customName: null });
         }
     }
 
-    if (convertedFiles.length > 0) {
-        statusDiv.textContent = `${convertedFiles.length}個のファイルの変換が完了しました！`;
-        actionArea.style.display = 'block';
-    } else {
+    if (allOggEntries.length === 0) {
         statusDiv.textContent = '変換できるOggファイルが見つかりませんでした。';
+        progressContainer.style.display = 'none';
+        return;
     }
+
+    // 1つずつ変換しつつ進捗を更新
+    let completedCount = 0;
+    for (const entry of allOggEntries) {
+        let percent = (completedCount / allOggEntries.length) * 100;
+        updateProgress(percent, `${entry.file.name} を変換中... (${completedCount + 1}/${allOggEntries.length})`);
+
+        await convertAndStoreOgg(entry.file, audioContext, entry.customName);
+        completedCount++;
+    }
+
+    updateProgress(100, `${convertedFiles.length}個のファイルの変換が完了しました！`);
+    actionArea.style.display = 'block';
 }
 
 // 個別Oggファイルの変換・保存
 async function convertAndStoreOgg(file, audioContext, customName = null) {
     try {
-        statusDiv.textContent = `${file.name} を変換中...`;
         const arrayBuffer = await file.arrayBuffer();
         const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
         const wavData = bufferToWav(audioBuffer);
@@ -80,24 +109,24 @@ async function convertAndStoreOgg(file, audioContext, customName = null) {
 
         convertedFiles.push({ name: fileName, blob: blob, url: url });
 
-        // リストに追加表示
         const item = document.createElement('div');
         item.className = 'file-item';
-        item.innerHTML = `<span>🎵 ${fileName}</span> <span style="color: #2ecc71;">変換成功</span>`;
+        item.innerHTML = `<span>🎵 ${fileName}</span> <span style="color: #2ecc71;">成功</span>`;
         fileListDiv.appendChild(item);
     } catch (err) {
         console.error(err);
         const item = document.createElement('div');
         item.className = 'file-item';
-        item.innerHTML = `<span>⚠️ ${file.name}</span> <span style="color: #e74c3c;">デコード失敗</span>`;
+        item.innerHTML = `<span>⚠️ ${file.name}</span> <span style="color: #e74c3c;">失敗</span>`;
         fileListDiv.appendChild(item);
     }
 }
 
-// ZIPファイルの解凍処理（パスワード対応）
-async function handleZipFile(file, audioContext) {
+// ZIPファイルからOggエントリを抽出する（パスワード対応）
+async function getOggEntriesFromZip(file) {
     statusDiv.textContent = `${file.name} を展開中...`;
     let zip = new JSZip();
+    let entries = [];
 
     try {
         let zipContent = await zip.loadAsync(file);
@@ -105,12 +134,10 @@ async function handleZipFile(file, audioContext) {
         for (let [relativePath, zipEntry] of Object.entries(zipContent.files)) {
             if (zipEntry.dir) continue;
             
-            // パスワード保護されている場合の処理
             let fileData;
             try {
                 fileData = await zipEntry.async('arraybuffer');
             } catch (err) {
-                // 暗号化されている、または読み込みエラーの場合
                 if (err.message.includes('encrypted') || err.message.includes('password')) {
                     modalFileName.textContent = file.name;
                     passwordModal.style.display = 'flex';
@@ -120,10 +147,8 @@ async function handleZipFile(file, audioContext) {
                     });
                     passwordModal.style.display = 'none';
 
-                    // パスワード付きで再試行 (JSZipは直接暗号化パスワード対応が弱いため別アプローチかプロンプト制御)
                     try {
                         let decryptedZip = new JSZip();
-                        // JSZipでパスワード付きを展開するにはオプションを指定してロード
                         let loaded = await decryptedZip.loadAsync(file, { password: password });
                         let targetEntry = loaded.files[relativePath];
                         fileData = await targetEntry.async('arraybuffer');
@@ -136,20 +161,19 @@ async function handleZipFile(file, audioContext) {
                 }
             }
 
-            // Oggファイルであれば変換キューに回す
             if (relativePath.toLowerCase().endsWith('.ogg')) {
                 let fakeFile = new File([fileData], relativePath);
                 let baseName = relativePath.substring(relativePath.lastIndexOf('/') + 1, relativePath.lastIndexOf('.'));
-                await convertAndStoreOgg(fakeFile, audioContext, baseName);
+                entries.push({ file: fakeFile, customName: baseName });
             }
         }
     } catch (e) {
         console.error(e);
         statusDiv.textContent = `ZIPファイルの読み込みに失敗しました: ${file.name}`;
     }
+    return entries;
 }
 
-// パスワード入力のモーダル処理
 submitPasswordBtn.addEventListener('click', () => {
     if (passwordResolver) {
         passwordResolver(zipPasswordInput.value);
@@ -167,7 +191,7 @@ downloadAllBtn.addEventListener('click', () => {
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-        }, index * 300); // 連続ダウンロードブロック対策のディレイ
+        }, index * 300);
     });
 });
 
@@ -195,7 +219,7 @@ downloadZipBtn.addEventListener('click', async () => {
     downloadZipBtn.disabled = false;
 });
 
-// WAV変換ロジック（変更なし）
+// WAV変換ロジック
 function bufferToWav(buffer) {
     const numOfChan = buffer.numberOfChannels;
     const sampleRate = buffer.sampleRate;
