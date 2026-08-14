@@ -1,4 +1,3 @@
-// JS全体の予期せぬエラーを捕捉してコンソールに出す
 window.addEventListener('error', (e) => {
     console.error(`JSエラー発生: ${e.message} (${e.filename}:${e.lineno})`);
 });
@@ -58,7 +57,6 @@ function appendLog(text, color) {
 }
 // -----------------------------
 
-// ドラッグ＆ドロップイベント
 ['dragenter', 'dragover'].forEach(eventName => {
     dropZone.addEventListener(eventName, (e) => { e.preventDefault(); dropZone.style.borderColor = '#3498db'; });
 });
@@ -78,15 +76,21 @@ async function handleFiles(files) {
     fileListDiv.innerHTML = '';
     fileListDiv.style.display = 'block';
     
-    if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    if (audioContext.state === 'suspended') await audioContext.resume();
+    if (!audioContext) {
+        console.log("AudioContextを新規作成します");
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioContext.state === 'suspended') {
+        console.log("AudioContextをレジュームします");
+        await audioContext.resume();
+    }
 
     statusDiv.textContent = 'ファイルを読み込み中...';
     progressContainer.style.display = 'block';
 
     let allEntries = [];
     for (const file of files) {
-        console.log(`処理中アイテム: ${file.name}`);
+        console.log(`ファイル名確認: ${file.name}, size: ${file.size}`);
         if (file.name.toLowerCase().endsWith('.zip')) {
             let zipEntries = await getEntriesFromZip(file);
             allEntries.push(...zipEntries);
@@ -102,10 +106,12 @@ async function handleFiles(files) {
         return;
     }
 
-    console.log(`合計 ${allEntries.length}個の音声ファイルを検出しました。デコードを開始します。`);
+    console.log(`合計 ${allEntries.length}個のエントリ。処理を開始します。`);
 
     for (let i = 0; i < allEntries.length; i++) {
+        console.log(`processAudioFile 呼び出し前: インデックス ${i}`);
         await processAudioFile(allEntries[i].file, audioContext, allEntries[i].customName, i, targetExt);
+        console.log(`processAudioFile 完了: インデックス ${i}`);
         const percent = ((i + 1) / allEntries.length) * 100;
         progressBar.style.width = percent + '%';
         progressBar.textContent = Math.round(percent) + '%';
@@ -119,8 +125,12 @@ async function handleFiles(files) {
 
 async function processAudioFile(file, ctx, customName, id, ext) {
     try {
+        console.log(`[process] arrayBuffer取得中: ${file.name}`);
         const arrayBuffer = await file.arrayBuffer();
+        console.log(`[process] デコード中 (decodeAudioData): ${file.name}`);
         const buffer = await ctx.decodeAudioData(arrayBuffer);
+        console.log(`[process] デコード成功、ファイルオブジェクト構築中`);
+        
         let fileObj = { 
             id, 
             baseName: (customName || file.name).replace(/\.[^/.]+$/, ""), 
@@ -132,13 +142,12 @@ async function processAudioFile(file, ctx, customName, id, ext) {
         };
         updateFileBlob(fileObj);
         convertedFiles.push(fileObj);
-        console.log(`デコード成功: ${fileObj.baseName}.${ext}`);
+        console.log(`デコード成功完了: ${fileObj.baseName}.${ext}`);
     } catch (e) {
-        console.error(`デコード失敗 (${file.name}):`, e);
+        console.error(`デコード失敗 (${file.name}):`, e.message || e);
     }
 }
 
-// 一括拡張子が変更されたときの処理
 globalExtSelect.addEventListener('change', () => {
     const newExt = globalExtSelect.value;
     console.log(`一括拡張子が変更されました: ${newExt}`);
@@ -168,7 +177,6 @@ function renderFileList() {
     });
 }
 
-// 簡易ダウンロード・再生用ヘルパー
 window.downloadFile = (id) => {
     const file = convertedFiles.find(f => f.id === id);
     if (!file || !file.url) {
@@ -199,7 +207,6 @@ window.playAudioDirectly = (id) => {
     source.start(0);
 };
 
-// ZIP解凍処理
 async function getEntriesFromZip(file) {
     try {
         let zip = new JSZip();
@@ -218,7 +225,6 @@ async function getEntriesFromZip(file) {
     }
 }
 
-// 一括ダウンロード・ZIPダウンロードのボタン処理
 downloadAllBtn.addEventListener('click', () => {
     console.log('一括個別ダウンロードを開始します');
     convertedFiles.forEach((file, index) => {
