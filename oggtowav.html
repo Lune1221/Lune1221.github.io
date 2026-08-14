@@ -11,7 +11,7 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             background-color: #f4f7f6;
             color: #333;
-            max-width: 700px;
+            max-width: 750px;
             margin: 40px auto;
             padding: 20px;
         }
@@ -72,12 +72,16 @@
         .btn-success:hover {
             background-color: #27ae60;
         }
+        .btn-sm {
+            padding: 5px 10px;
+            font-size: 13px;
+        }
         #status {
             margin-top: 15px;
             font-weight: bold;
             color: #e67e22;
         }
-        /* パーセントバーのスタイル */
+        /* パーセントバー */
         .progress-container {
             width: 100%;
             background-color: #e0e0e0;
@@ -96,10 +100,27 @@
             line-height: 18px;
             transition: width 0.1s ease;
         }
+        /* 一括操作バー */
+        .batch-controls {
+            display: none;
+            background: #f1f4f6;
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 15px;
+            text-align: left;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .batch-controls label {
+            font-size: 14px;
+            font-weight: bold;
+        }
         .file-list {
             text-align: left;
-            margin-top: 20px;
-            max-height: 250px;
+            margin-top: 15px;
+            max-height: 300px;
             overflow-y: auto;
             border: 1px solid #e0e0e0;
             border-radius: 6px;
@@ -110,12 +131,28 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 8px 10px;
+            padding: 10px;
             border-bottom: 1px solid #eee;
             font-size: 14px;
+            background: #fff;
+            margin-bottom: 6px;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
         }
         .file-item:last-child {
-            border-bottom: none;
+            margin-bottom: 0;
+        }
+        .file-info {
+            flex-grow: 1;
+            margin-right: 15px;
+        }
+        .file-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .volume-slider {
+            width: 80px;
         }
         .actions {
             margin-top: 20px;
@@ -149,7 +186,7 @@
 
     <div class="container">
         <h1>Ogg to WAV 変換ツール</h1>
-        <p>複数のOggファイル、またはZIPファイル（パスワード対応）を一括変換できます</p>
+        <p>一括変換・音量調整・試聴対応のWAV変換ツール</p>
 
         <div class="drop-zone" id="dropZone">
             <p>ここにOggファイル、またはZIPファイルをドロップ<br>または</p>
@@ -162,6 +199,16 @@
         <!-- パーセントバー -->
         <div class="progress-container" id="progressContainer">
             <div class="progress-bar" id="progressBar">0%</div>
+        </div>
+
+        <!-- 一括音量調整バー -->
+        <div class="batch-controls" id="batchControls">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <label for="batchVolumeSlider">🔊 一括音量変更:</label>
+                <input type="range" id="batchVolumeSlider" min="0" max="2" step="0.05" value="1">
+                <span id="batchVolumeText">100%</span>
+            </div>
+            <span style="font-size: 12px; color: #7f8c8d;">※音量を変えるとWAVデータも再計算されます</span>
         </div>
 
         <div class="file-list" id="fileList" style="display: none;"></div>
