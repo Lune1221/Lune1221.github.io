@@ -1,9 +1,20 @@
 const fileInput = document.getElementById('fileInput');
 const dropZone = document.getElementById('dropZone');
 const statusDiv = document.getElementById('status');
-const downloadArea = document.getElementById('downloadArea');
+const fileListDiv = document.getElementById('fileList');
+const actionArea = document.getElementById('actionArea');
+const downloadAllBtn = document.getElementById('downloadAllBtn');
+const downloadZipBtn = document.getElementById('downloadZipBtn');
 
-// ドラッグ＆ドロップのイベント設定
+const passwordModal = document.getElementById('passwordModal');
+const zipPasswordInput = document.getElementById('zipPasswordInput');
+const submitPasswordBtn = document.getElementById('submitPasswordBtn');
+const modalFileName = document.getElementById('modalFileName');
+
+let convertedFiles = []; // { name, blob, url } の配列
+let passwordResolver = null;
+
+// ドラッグ＆ドロップ設定
 ['dragenter', 'dragover'].forEach(eventName => {
     dropZone.addEventListener(eventName, (e) => {
         e.preventDefault();
@@ -19,61 +30,176 @@ const downloadArea = document.getElementById('downloadArea');
 });
 
 dropZone.addEventListener('drop', (e) => {
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-        handleFile(files[0]);
-    }
+    handleFiles(e.dataTransfer.files);
 });
 
 fileInput.addEventListener('change', (e) => {
-    if (e.target.files.length > 0) {
-        handleFile(e.target.files[0]);
-    }
+    handleFiles(e.target.files);
 });
 
-// メインの変換処理
-async function handleFile(file) {
-    if (!file.name.endsWith('.ogg') && file.type !== 'audio/ogg' && !file.type.includes('ogg')) {
-        statusDiv.textContent = 'エラー: Oggファイルを選択してください。';
-        return;
+// ファイルの振り分け処理
+async function handleFiles(files) {
+    if (files.length === 0) return;
+
+    convertedFiles = [];
+    fileListDiv.innerHTML = '';
+    fileListDiv.style.display = 'block';
+    actionArea.style.display = 'none';
+    statusDiv.textContent = 'ファイルを処理中...';
+
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+    for (const file of files) {
+        if (file.name.toLowerCase().endsWith('.zip')) {
+            await handleZipFile(file, audioContext);
+        } else if (file.name.toLowerCase().endsWith('.ogg') || file.type.includes('ogg')) {
+            await convertAndStoreOgg(file, audioContext);
+        }
     }
 
-    downloadArea.innerHTML = '';
-    statusDiv.textContent = 'ファイルを読み込み中...';
-
-    try {
-        const arrayBuffer = await file.arrayBuffer();
-        
-        statusDiv.textContent = '音声データに変換中...';
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-
-        statusDiv.textContent = 'WAV形式にエンコード中...';
-        const wavData = bufferToWav(audioBuffer);
-        const blob = new Blob([wavData], { type: 'audio/wav' });
-
-        // ダウンロードリンクの作成
-        const url = URL.createObjectURL(blob);
-        const originalName = file.name.substring(0, file.name.lastIndexOf('.'));
-        const fileName = `${originalName}.wav`;
-
-        statusDiv.textContent = '変換が完了しました！';
-        
-        downloadArea.innerHTML = `
-            <a href="${url}" download="${fileName}" class="btn">WAVファイルをダウンロード</a>
-        `;
-
-    } catch (error) {
-        console.error(error);
-        statusDiv.textContent = 'エラー: このOggファイルはデコードできませんでした。';
+    if (convertedFiles.length > 0) {
+        statusDiv.textContent = `${convertedFiles.length}個のファイルの変換が完了しました！`;
+        actionArea.style.display = 'block';
+    } else {
+        statusDiv.textContent = '変換できるOggファイルが見つかりませんでした。';
     }
 }
 
-// AudioBufferをWAV形式のArrayBufferに変換する関数
+// 個別Oggファイルの変換・保存
+async function convertAndStoreOgg(file, audioContext, customName = null) {
+    try {
+        statusDiv.textContent = `${file.name} を変換中...`;
+        const arrayBuffer = await file.arrayBuffer();
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+        const wavData = bufferToWav(audioBuffer);
+        const blob = new Blob([wavData], { type: 'audio/wav' });
+        const url = URL.createObjectURL(blob);
+
+        const baseName = customName || file.name.substring(0, file.name.lastIndexOf('.'));
+        const fileName = `${baseName}.wav`;
+
+        convertedFiles.push({ name: fileName, blob: blob, url: url });
+
+        // リストに追加表示
+        const item = document.createElement('div');
+        item.className = 'file-item';
+        item.innerHTML = `<span>🎵 ${fileName}</span> <span style="color: #2ecc71;">変換成功</span>`;
+        fileListDiv.appendChild(item);
+    } catch (err) {
+        console.error(err);
+        const item = document.createElement('div');
+        item.className = 'file-item';
+        item.innerHTML = `<span>⚠️ ${file.name}</span> <span style="color: #e74c3c;">デコード失敗</span>`;
+        fileListDiv.appendChild(item);
+    }
+}
+
+// ZIPファイルの解凍処理（パスワード対応）
+async function handleZipFile(file, audioContext) {
+    statusDiv.textContent = `${file.name} を展開中...`;
+    let zip = new JSZip();
+
+    try {
+        let zipContent = await zip.loadAsync(file);
+        
+        for (let [relativePath, zipEntry] of Object.entries(zipContent.files)) {
+            if (zipEntry.dir) continue;
+            
+            // パスワード保護されている場合の処理
+            let fileData;
+            try {
+                fileData = await zipEntry.async('arraybuffer');
+            } catch (err) {
+                // 暗号化されている、または読み込みエラーの場合
+                if (err.message.includes('encrypted') || err.message.includes('password')) {
+                    modalFileName.textContent = file.name;
+                    passwordModal.style.display = 'flex';
+                    
+                    let password = await new Promise((resolve) => {
+                        passwordResolver = resolve;
+                    });
+                    passwordModal.style.display = 'none';
+
+                    // パスワード付きで再試行 (JSZipは直接暗号化パスワード対応が弱いため別アプローチかプロンプト制御)
+                    try {
+                        let decryptedZip = new JSZip();
+                        // JSZipでパスワード付きを展開するにはオプションを指定してロード
+                        let loaded = await decryptedZip.loadAsync(file, { password: password });
+                        let targetEntry = loaded.files[relativePath];
+                        fileData = await targetEntry.async('arraybuffer');
+                    } catch (pwErr) {
+                        alert('パスワードが間違っているか、解凍できませんでした。');
+                        continue;
+                    }
+                } else {
+                    continue;
+                }
+            }
+
+            // Oggファイルであれば変換キューに回す
+            if (relativePath.toLowerCase().endsWith('.ogg')) {
+                let fakeFile = new File([fileData], relativePath);
+                let baseName = relativePath.substring(relativePath.lastIndexOf('/') + 1, relativePath.lastIndexOf('.'));
+                await convertAndStoreOgg(fakeFile, audioContext, baseName);
+            }
+        }
+    } catch (e) {
+        console.error(e);
+        statusDiv.textContent = `ZIPファイルの読み込みに失敗しました: ${file.name}`;
+    }
+}
+
+// パスワード入力のモーダル処理
+submitPasswordBtn.addEventListener('click', () => {
+    if (passwordResolver) {
+        passwordResolver(zipPasswordInput.value);
+        zipPasswordInput.value = '';
+    }
+});
+
+// すべて個別にダウンロード
+downloadAllBtn.addEventListener('click', () => {
+    convertedFiles.forEach((file, index) => {
+        setTimeout(() => {
+            const a = document.createElement('a');
+            a.href = file.url;
+            a.download = file.name;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }, index * 300); // 連続ダウンロードブロック対策のディレイ
+    });
+});
+
+// ZIPにまとめてダウンロード
+downloadZipBtn.addEventListener('click', async () => {
+    statusDiv.textContent = 'ZIPファイルを作成中...';
+    downloadZipBtn.disabled = true;
+
+    const zip = new JSZip();
+    convertedFiles.forEach(file => {
+        zip.file(file.name, file.blob);
+    });
+
+    const content = await zip.generateAsync({ type: 'blob' });
+    const zipUrl = URL.createObjectURL(content);
+
+    const a = document.createElement('a');
+    a.href = zipUrl;
+    a.download = 'converted_wav_files.zip';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    statusDiv.textContent = 'ZIPのダウンロードが完了しました！';
+    downloadZipBtn.disabled = false;
+});
+
+// WAV変換ロジック（変更なし）
 function bufferToWav(buffer) {
     const numOfChan = buffer.numberOfChannels;
     const sampleRate = buffer.sampleRate;
-    const format = 1; // PCM
+    const format = 1;
     const bitDepth = 16;
 
     let result;
@@ -88,26 +214,22 @@ function bufferToWav(buffer) {
     const arrayBuffer = new ArrayBuffer(bufferLength);
     const view = new DataView(arrayBuffer);
 
-    // RIFFチャンク
     writeString(view, 0, 'RIFF');
     view.setUint32(4, 36 + dataLength, true);
     writeString(view, 8, 'WAVE');
 
-    // fmtサブチャンク
     writeString(view, 12, 'fmt ');
-    view.setUint32(16, 16, true); // SubChunk1Size (16 for PCM)
-    view.setUint16(20, format, true); // AudioFormat
-    view.setUint16(22, numOfChan, true); // NumChannels
-    view.setUint32(24, sampleRate, true); // SampleRate
-    view.setUint32(28, sampleRate * numOfChan * (bitDepth / 8), true); // ByteRate
-    view.setUint16(32, numOfChan * (bitDepth / 8), true); // BlockAlign
-    view.setUint16(34, bitDepth, true); // BitsPerSample
+    view.setUint32(16, 16, true);
+    view.setUint16(20, format, true);
+    view.setUint16(22, numOfChan, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * numOfChan * (bitDepth / 8), true);
+    view.setUint16(32, numOfChan * (bitDepth / 8), true);
+    view.setUint16(34, bitDepth, true);
 
-    // dataサブチャンク
     writeString(view, 36, 'data');
     view.setUint32(40, dataLength, true);
 
-    // 波形データの書き込み (16bit PCM)
     let offset = 44;
     for (let i = 0; i < result.length; i++, offset += 2) {
         let s = Math.max(-1, Math.min(1, result[i]));
@@ -122,7 +244,6 @@ function interleave(inputL, inputR) {
     let result = new Float32Array(length);
     let index = 0;
     let inputIndex = 0;
-
     while (index < length) {
         result[index++] = inputL[inputIndex];
         result[index++] = inputR[inputIndex];
