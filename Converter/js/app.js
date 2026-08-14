@@ -1,3 +1,9 @@
+// JS全体の予期せぬエラーを捕捉してコンソールに出す
+window.addEventListener('error', (e) => {
+    console.error(`JSエラー発生: ${e.message} (${e.filename}:${e.lineno})`);
+});
+console.log("app.jsの読み込みを開始しました");
+
 const fileInput = document.getElementById('fileInput');
 const dropZone = document.getElementById('dropZone');
 const statusDiv = document.getElementById('status');
