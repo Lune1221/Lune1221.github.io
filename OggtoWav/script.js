@@ -3,9 +3,11 @@ const dropZone = document.getElementById('dropZone');
 const statusDiv = document.getElementById('status');
 const progressContainer = document.getElementById('progressContainer');
 const progressBar = document.getElementById('progressBar');
-const batchControls = document.getElementById('batchControls');
+const toolbar = document.getElementById('toolbar');
+const searchInput = document.getElementById('searchInput');
+const sortSelect = document.getElementById('sortSelect');
 const batchVolumeSlider = document.getElementById('batchVolumeSlider');
-const batchVolumeText = document.getElementById('batchVolumeText');
+const batchVolumeNumber = document.getElementById('batchVolumeNumber');
 const fileListDiv = document.getElementById('fileList');
 const actionArea = document.getElementById('actionArea');
 const downloadAllBtn = document.getElementById('downloadAllBtn');
@@ -64,11 +66,10 @@ async function handleFiles(files) {
     fileListDiv.innerHTML = '';
     fileListDiv.style.display = 'block';
     actionArea.style.display = 'none';
-    batchControls.style.display = 'none';
+    toolbar.style.display = 'none';
     
     updateProgress(0, 'ファイルを準備中...');
 
-    // ユーザー操作の文脈でAudioContextを確実に生成
     if (!audioContext || audioContext.state === 'closed') {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
     } else if (audioContext.state === 'suspended') {
@@ -101,9 +102,13 @@ async function handleFiles(files) {
         completedCount++;
     }
 
+    // 初期状態としてファイル名昇順で並び替え
+    sortFiles();
+
     updateProgress(100, `${convertedFiles.length}個のファイルの準備が完了しました！`);
-    batchControls.style.display = 'flex';
+    toolbar.style.display = 'flex';
     actionArea.style.display = 'block';
+    renderFileList();
 }
 
 async function processOggFile(file, audioContext, customName, id) {
@@ -125,14 +130,8 @@ async function processOggFile(file, audioContext, customName, id) {
 
         updateWavBlob(fileObj);
         convertedFiles.push(fileObj);
-
-        renderFileItem(fileObj);
     } catch (err) {
         console.error(err);
-        const item = document.createElement('div');
-        item.className = 'file-item';
-        item.innerHTML = `<span class="file-info" style="color: #e74c3c;">⚠️ ${file.name} (デコード失敗)</span>`;
-        fileListDiv.appendChild(item);
     }
 }
 
@@ -143,63 +142,142 @@ function updateWavBlob(fileObj) {
     fileObj.url = URL.createObjectURL(fileObj.blob);
 }
 
-function renderFileItem(fileObj) {
-    const item = document.createElement('div');
-    item.className = 'file-item';
-    item.id = `file-item-${fileObj.id}`;
-    
-    item.innerHTML = `
-        <div class="file-info" title="${fileObj.name}">
-            <div style="font-weight: bold; margin-bottom: 2px;">🎵 ${fileObj.name}</div>
-            <div style="font-size: 11px; color: #7f8c8d;">音量: <span id="vol-text-${fileObj.id}">100%</span></div>
-        </div>
-        <div class="file-controls">
-            <input type="range" class="volume-slider" id="slider-${fileObj.id}" min="0" max="3" step="0.05" value="${fileObj.volume}">
-            <button class="btn btn-sm" id="play-btn-${fileObj.id}">▶ 再生</button>
-            <button class="btn btn-sm btn-success" id="dl-btn-${fileObj.id}">💾 保存</button>
-        </div>
-    `;
-    fileListDiv.appendChild(item);
+// ファイルリストを描画（検索・ソート結果を反映）
+function renderFileList() {
+    fileListDiv.innerHTML = '';
+    const keyword = searchInput.value.toLowerCase();
 
-    const slider = document.getElementById(`slider-${fileObj.id}`);
-    const volText = document.getElementById(`vol-text-${fileObj.id}`);
-    const playBtn = document.getElementById(`play-btn-${fileObj.id}`);
-    const dlBtn = document.getElementById(`dl-btn-${fileObj.id}`);
+    // フィルタリング
+    const filteredFiles = convertedFiles.filter(fileObj => 
+        fileObj.name.toLowerCase().includes(keyword)
+    );
 
-    // スライダー変更
-    slider.addEventListener('input', (e) => {
-        fileObj.volume = parseFloat(e.target.value);
-        volText.textContent = Math.round(fileObj.volume * 100) + '%';
-        updateWavBlob(fileObj);
-    });
+    if (filteredFiles.length === 0) {
+        fileListDiv.innerHTML = '<div style="padding: 15px; text-align: center; color: #7f8c8d;">一致するファイルがありません</div>';
+        return;
+    }
 
-    // 個別デモ再生ボタン
-    playBtn.addEventListener('click', async () => {
-        if (!audioContext) return;
-        if (audioContext.state === 'suspended') {
-            await audioContext.resume();
-        }
+    filteredFiles.forEach(fileObj => {
+        const percentVal = Math.round(fileObj.volume * 100);
+        const item = document.createElement('div');
+        item.className = 'file-item';
+        item.id = `file-item-${fileObj.id}`;
+        
+        item.innerHTML = `
+            <div class="file-info" title="${fileObj.name}">
+                <div style="font-weight: bold; margin-bottom: 2px;">🎵 ${fileObj.name}</div>
+                <div style="font-size: 11px; color: #7f8c8d;">音量: <span id="vol-text-${fileObj.id}">${percentVal}%</span></div>
+            </div>
+            <div class="file-controls">
+                <input type="range" class="volume-slider" id="slider-${fileObj.id}" min="0" max="10" step="0.05" value="${fileObj.volume}">
+                <input type="number" id="num-${fileObj.id}" class="volume-input-number" min="0" max="1000" value="${percentVal}">%
+                <button class="btn btn-sm" id="play-btn-${fileObj.id}">▶ 再生</button>
+                <button class="btn btn-sm btn-success" id="dl-btn-${fileObj.id}">💾 保存</button>
+            </div>
+        `;
+        fileListDiv.appendChild(item);
 
-        if (currentPlayingSource && currentPlayingButton === playBtn) {
-            stopCurrentAudio();
-        } else {
-            stopCurrentAudio();
-            playAudio(fileObj, playBtn);
-        }
-    });
+        const slider = document.getElementById(`slider-${fileObj.id}`);
+        const numberInput = document.getElementById(`num-${fileObj.id}`);
+        const volText = document.getElementById(`vol-text-${fileObj.id}`);
+        const playBtn = document.getElementById(`play-btn-${fileObj.id}`);
+        const dlBtn = document.getElementById(`dl-btn-${fileObj.id}`);
 
-    // 個別ダウンロードボタン
-    dlBtn.addEventListener('click', () => {
-        const a = document.createElement('a');
-        a.href = fileObj.url;
-        a.download = fileObj.name;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        // スライダー操作
+        slider.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            fileObj.volume = val;
+            const p = Math.round(val * 100);
+            volText.textContent = p + '%';
+            numberInput.value = p;
+            updateWavBlob(fileObj);
+        });
+
+        // 数値入力操作
+        numberInput.addEventListener('input', (e) => {
+            let p = parseInt(e.target.value);
+            if (isNaN(p)) p = 0;
+            if (p > 1000) p = 1000;
+            const val = p / 100;
+            fileObj.volume = val;
+            volText.textContent = p + '%';
+            slider.value = Math.min(val, 10); // スライダーの上限は10(1000%)に合わせる
+            updateWavBlob(fileObj);
+        });
+
+        // デモ再生
+        playBtn.addEventListener('click', async () => {
+            if (!audioContext) return;
+            if (audioContext.state === 'suspended') {
+                await audioContext.resume();
+            }
+
+            if (currentPlayingSource && currentPlayingButton === playBtn) {
+                stopCurrentAudio();
+            } else {
+                stopCurrentAudio();
+                playAudio(fileObj, playBtn);
+            }
+        });
+
+        // 個別保存
+        dlBtn.addEventListener('click', () => {
+            const a = document.createElement('a');
+            a.href = fileObj.url;
+            a.download = fileObj.name;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        });
     });
 }
 
-// 試聴用オーディオ再生
+// 並び替え処理
+function sortFiles() {
+    const sortType = sortSelect.value;
+    convertedFiles.sort((a, b) => {
+        if (sortType === 'name-asc') {
+            return a.name.localeCompare(b.name, 'ja', { numeric: true });
+        } else {
+            return b.name.localeCompare(a.name, 'ja', { numeric: true });
+        }
+    });
+}
+
+sortSelect.addEventListener('change', () => {
+    sortFiles();
+    renderFileList();
+});
+
+searchInput.addEventListener('input', () => {
+    renderFileList();
+});
+
+// 一括音量変更の連動
+function applyBatchVolume(val) {
+    const p = Math.round(val * 100);
+    batchVolumeSlider.value = Math.min(val, 10);
+    batchVolumeNumber.value = p;
+
+    convertedFiles.forEach(fileObj => {
+        fileObj.volume = val;
+        updateWavBlob(fileObj);
+    });
+    renderFileList();
+}
+
+batchVolumeSlider.addEventListener('input', (e) => {
+    applyBatchVolume(parseFloat(e.target.value));
+});
+
+batchVolumeNumber.addEventListener('input', (e) => {
+    let p = parseInt(e.target.value);
+    if (isNaN(p)) p = 0;
+    if (p > 1000) p = 1000;
+    applyBatchVolume(p / 100);
+});
+
+// 試聴用
 function playAudio(fileObj, btnElement) {
     const source = audioContext.createBufferSource();
     const gainNode = audioContext.createGain();
@@ -236,22 +314,6 @@ function stopCurrentAudio() {
         currentPlayingButton = null;
     }
 }
-
-// 一括音量変更スライダー
-batchVolumeSlider.addEventListener('input', (e) => {
-    const val = parseFloat(e.target.value);
-    batchVolumeText.textContent = Math.round(val * 100) + '%';
-
-    convertedFiles.forEach(fileObj => {
-        fileObj.volume = val;
-        updateWavBlob(fileObj);
-
-        const slider = document.getElementById(`slider-${fileObj.id}`);
-        const volText = document.getElementById(`vol-text-${fileObj.id}`);
-        if (slider) slider.value = val;
-        if (volText) volText.textContent = Math.round(val * 100) + '%';
-    });
-});
 
 async function getOggEntriesFromZip(file) {
     statusDiv.textContent = `${file.name} を展開中...`;
@@ -347,7 +409,7 @@ downloadZipBtn.addEventListener('click', async () => {
     downloadZipBtn.disabled = false;
 });
 
-// WAV変換・増幅ロジック
+// WAV変換・増幅ロジック（最大1000%対応）
 function bufferToWav(buffer, volume = 1.0) {
     const numOfChan = buffer.numberOfChannels;
     const sampleRate = buffer.sampleRate;
