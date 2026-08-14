@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ogg to WAV 変換ツール</title>
-    <!-- ZIP処理用のライブラリ (JSZip & fflate for password zip) -->
+    <!-- ZIP処理用のライブラリ -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         body {
@@ -77,6 +77,25 @@
             font-weight: bold;
             color: #e67e22;
         }
+        /* パーセントバーのスタイル */
+        .progress-container {
+            width: 100%;
+            background-color: #e0e0e0;
+            border-radius: 6px;
+            margin-top: 15px;
+            overflow: hidden;
+            display: none;
+        }
+        .progress-bar {
+            width: 0%;
+            height: 18px;
+            background-color: #3498db;
+            text-align: center;
+            color: white;
+            font-size: 12px;
+            line-height: 18px;
+            transition: width 0.1s ease;
+        }
         .file-list {
             text-align: left;
             margin-top: 20px;
@@ -139,6 +158,11 @@
         </div>
 
         <div id="status"></div>
+        
+        <!-- パーセントバー -->
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-bar" id="progressBar">0%</div>
+        </div>
 
         <div class="file-list" id="fileList" style="display: none;"></div>
 
@@ -159,7 +183,6 @@
         </div>
     </div>
 
-    <!-- スクリプトの読み込み（パスを修正済み） -->
     <script src="OggtoWav/script.js"></script>
 </body>
 </html>
