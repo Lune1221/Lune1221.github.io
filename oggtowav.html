@@ -62,10 +62,6 @@
         .btn:hover {
             background-color: #2980b9;
         }
-        .btn:disabled {
-            background-color: #bdc3c7;
-            cursor: not-allowed;
-        }
         .btn-success {
             background-color: #2ecc71;
         }
@@ -81,7 +77,6 @@
             font-weight: bold;
             color: #e67e22;
         }
-        /* パーセントバー */
         .progress-container {
             width: 100%;
             background-color: #e0e0e0;
@@ -100,27 +95,43 @@
             line-height: 18px;
             transition: width 0.1s ease;
         }
-        /* 一括操作バー */
-        .batch-controls {
+        /* 検索・並び替え・一括操作エリア */
+        .toolbar {
             display: none;
             background: #f1f4f6;
             padding: 12px;
             border-radius: 6px;
             margin-top: 15px;
             text-align: left;
+            gap: 12px;
+            flex-wrap: wrap;
             align-items: center;
             justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 10px;
         }
-        .batch-controls label {
+        .toolbar input[type="text"], .toolbar select {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
             font-size: 14px;
-            font-weight: bold;
+        }
+        .batch-volume-area {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            margin-top: 5px;
+            padding-top: 8px;
+            border-top: 1px solid #e0e0e0;
+        }
+        .volume-input-number {
+            width: 70px;
+            padding: 4px;
+            text-align: right;
         }
         .file-list {
             text-align: left;
             margin-top: 15px;
-            max-height: 350px;
+            max-height: 380px;
             overflow-y: auto;
             border: 1px solid #e0e0e0;
             border-radius: 6px;
@@ -161,7 +172,6 @@
         .actions {
             margin-top: 20px;
         }
-        /* パスワード入力モーダル */
         .modal {
             display: none;
             position: fixed;
@@ -190,7 +200,7 @@
 
     <div class="container">
         <h1>Ogg to WAV 変換ツール</h1>
-        <p>一括変換・音量増幅・個別試聴・個別ダウンロード対応</p>
+        <p>一括変換・音量指定（%）・ファイル検索・名前順ソート対応</p>
 
         <div class="drop-zone" id="dropZone">
             <p>ここにOggファイル、またはZIPファイルをドロップ<br>または</p>
@@ -200,19 +210,24 @@
 
         <div id="status"></div>
         
-        <!-- パーセントバー -->
         <div class="progress-container" id="progressContainer">
             <div class="progress-bar" id="progressBar">0%</div>
         </div>
 
-        <!-- 一括音量調整バー -->
-        <div class="batch-controls" id="batchControls">
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <label for="batchVolumeSlider">🔊 一括音量変更:</label>
-                <input type="range" id="batchVolumeSlider" min="0" max="3" step="0.05" value="1">
-                <span id="batchVolumeText">100%</span>
+        <!-- ツールバー（検索・並び替え・一括音量） -->
+        <div class="toolbar" id="toolbar">
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; width: 100%;">
+                <input type="text" id="searchInput" placeholder="🔍 ファイル名で検索..." style="flex-grow: 1;">
+                <select id="sortSelect">
+                    <option value="name-asc">名前順 (昇順 A→Z)</option>
+                    <option value="name-desc">名前順 (降順 Z→A)</option>
+                </select>
             </div>
-            <span style="font-size: 12px; color: #7f8c8d;">※最大300%までブースト可能</span>
+            <div class="batch-volume-area">
+                <label for="batchVolumeSlider">🔊 一括音量:</label>
+                <input type="range" id="batchVolumeSlider" min="0" max="10" step="0.05" value="1" style="flex-grow: 1;">
+                <input type="number" id="batchVolumeNumber" class="volume-input-number" min="0" max="1000" value="100"> %
+            </div>
         </div>
 
         <div class="file-list" id="fileList" style="display: none;"></div>
