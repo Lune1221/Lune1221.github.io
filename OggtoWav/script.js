@@ -3,6 +3,9 @@ const dropZone = document.getElementById('dropZone');
 const statusDiv = document.getElementById('status');
 const progressContainer = document.getElementById('progressContainer');
 const progressBar = document.getElementById('progressBar');
+const batchControls = document.getElementById('batchControls');
+const batchVolumeSlider = document.getElementById('batchVolumeSlider');
+const batchVolumeText = document.getElementById('batchVolumeText');
 const fileListDiv = document.getElementById('fileList');
 const actionArea = document.getElementById('actionArea');
 const downloadAllBtn = document.getElementById('downloadAllBtn');
@@ -13,8 +16,9 @@ const zipPasswordInput = document.getElementById('zipPasswordInput');
 const submitPasswordBtn = document.getElementById('submitPasswordBtn');
 const modalFileName = document.getElementById('modalFileName');
 
-let convertedFiles = [];
+let convertedFiles = []; // { id, name, originalAudioBuffer, volume, blob, url }
 let passwordResolver = null;
+let currentPlayingSource = null; // 現在再生中の音声管理用
 
 // ドラッグ＆ドロップ設定
 ['dragenter', 'dragover'].forEach(eventName => {
@@ -39,7 +43,6 @@ fileInput.addEventListener('change', (e) => {
     handleFiles(e.target.files);
 });
 
-// 進捗バーを更新する補助関数
 function updateProgress(percent, text) {
     progressContainer.style.display = 'block';
     const p = Math.round(percent);
@@ -50,20 +53,21 @@ function updateProgress(percent, text) {
     }
 }
 
-// ファイルの振り分け処理
 async function handleFiles(files) {
     if (files.length === 0) return;
+
+    // 再生中のものがあれば止める
+    stopCurrentAudio();
 
     convertedFiles = [];
     fileListDiv.innerHTML = '';
     fileListDiv.style.display = 'block';
     actionArea.style.display = 'none';
+    batchControls.style.display = 'none';
     
     updateProgress(0, 'ファイルを準備中...');
 
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-
-    // 処理対象のファイルをリスト化（ZIPの中身も事前抽出のためにカウント）
     let allOggEntries = [];
 
     for (const file of files) {
@@ -81,48 +85,155 @@ async function handleFiles(files) {
         return;
     }
 
-    // 1つずつ変換しつつ進捗を更新
     let completedCount = 0;
     for (const entry of allOggEntries) {
         let percent = (completedCount / allOggEntries.length) * 100;
-        updateProgress(percent, `${entry.file.name} を変換中... (${completedCount + 1}/${allOggEntries.length})`);
+        updateProgress(percent, `${entry.file.name} を読み込み中... (${completedCount + 1}/${allOggEntries.length})`);
 
-        await convertAndStoreOgg(entry.file, audioContext, entry.customName);
+        await processOggFile(entry.file, audioContext, entry.customName, completedCount);
         completedCount++;
     }
 
-    updateProgress(100, `${convertedFiles.length}個のファイルの変換が完了しました！`);
+    updateProgress(100, `${convertedFiles.length}個のファイルの準備が完了しました！`);
+    batchControls.style.display = 'flex';
     actionArea.style.display = 'block';
 }
 
-// 個別Oggファイルの変換・保存
-async function convertAndStoreOgg(file, audioContext, customName = null) {
+// Oggファイルをデコードして保持
+async function processOggFile(file, audioContext, customName, id) {
     try {
         const arrayBuffer = await file.arrayBuffer();
         const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-        const wavData = bufferToWav(audioBuffer);
-        const blob = new Blob([wavData], { type: 'audio/wav' });
-        const url = URL.createObjectURL(blob);
 
         const baseName = customName || file.name.substring(0, file.name.lastIndexOf('.'));
         const fileName = `${baseName}.wav`;
 
-        convertedFiles.push({ name: fileName, blob: blob, url: url });
+        let fileObj = {
+            id: id,
+            name: fileName,
+            audioBuffer: audioBuffer,
+            volume: 1.0,
+            blob: null,
+            url: null
+        };
 
-        const item = document.createElement('div');
-        item.className = 'file-item';
-        item.innerHTML = `<span>🎵 ${fileName}</span> <span style="color: #2ecc71;">成功</span>`;
-        fileListDiv.appendChild(item);
+        // 初期音量でWAVを生成
+        updateWavBlob(fileObj);
+        convertedFiles.push(fileObj);
+
+        renderFileItem(fileObj, audioContext);
     } catch (err) {
         console.error(err);
         const item = document.createElement('div');
         item.className = 'file-item';
-        item.innerHTML = `<span>⚠️ ${file.name}</span> <span style="color: #e74c3c;">失敗</span>`;
+        item.innerHTML = `<span class="file-info">⚠️ ${file.name} (デコード失敗)</span>`;
         fileListDiv.appendChild(item);
     }
 }
 
-// ZIPファイルからOggエントリを抽出する（パスワード対応）
+// 音量を適用したWAVのBlobを作る
+function updateWavBlob(fileObj) {
+    const wavData = bufferToWav(fileObj.audioBuffer, fileObj.volume);
+    fileObj.blob = new Blob([wavData], { type: 'audio/wav' });
+    if (fileObj.url) URL.revokeObjectURL(fileObj.url);
+    fileObj.url = URL.createObjectURL(fileObj.blob);
+}
+
+// リストの項目を画面に描画
+function renderFileItem(fileObj, audioContext) {
+    const item = document.createElement('div');
+    item.className = 'file-item';
+    item.id = `file-item-${fileObj.id}`;
+    
+    item.innerHTML = `
+        <div class="file-info">
+            <div style="font-weight: bold; margin-bottom: 4px;">🎵 ${fileObj.name}</div>
+            <div style="font-size: 12px; color: #7f8c8d;">音量: <span id="vol-text-${fileObj.id}">100%</span></div>
+        </div>
+        <div class="file-controls">
+            <input type="range" class="volume-slider" id="slider-${fileObj.id}" min="0" max="2" step="0.05" value="${fileObj.volume}">
+            <button class="btn btn-sm" id="play-btn-${fileObj.id}">▶ デモ再生</button>
+        </div>
+    `;
+    fileListDiv.appendChild(item);
+
+    const slider = document.getElementById(`slider-${fileObj.id}`);
+    const volText = document.getElementById(`vol-text-${fileObj.id}`);
+    const playBtn = document.getElementById(`play-btn-${fileObj.id}`);
+
+    // 個別スライダー変更時
+    slider.addEventListener('input', (e) => {
+        fileObj.volume = parseFloat(e.target.value);
+        volText.textContent = Math.round(fileObj.volume * 100) + '%';
+        updateWavBlob(fileObj);
+    });
+
+    // デモ再生ボタン
+    playBtn.addEventListener('click', () => {
+        if (playBtn.textContent.includes('▶')) {
+            stopCurrentAudio();
+            playAudio(fileObj, audioContext, playBtn);
+        } else {
+            stopCurrentAudio();
+        }
+    });
+}
+
+// 音声のデモ再生
+function playAudio(fileObj, audioContext, btnElement) {
+    const source = audioContext.createBufferSource();
+    const gainNode = audioContext.createGain();
+
+    // 音声バッファに音量を掛け合わせる
+    source.buffer = fileObj.audioBuffer;
+    gainNode.gain.value = fileObj.volume;
+
+    source.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    source.start(0);
+    currentPlayingSource = source;
+    btnElement.textContent = '⏹ 停止';
+
+    source.onended = () => {
+        btnElement.textContent = '▶ デモ再生';
+        if (currentPlayingSource === source) {
+            currentPlayingSource = null;
+        }
+    };
+}
+
+function stopCurrentAudio() {
+    if (currentPlayingSource) {
+        try {
+            currentPlayingSource.stop();
+        } catch(e) {}
+        currentPlayingSource = null;
+    }
+    // 全てのボタンの表示を戻す
+    document.querySelectorAll('[id^="play-btn-"]').forEach(btn => {
+        btn.textContent = '▶ デモ再生';
+    });
+}
+
+// 一括音量変更スライダー
+batchVolumeSlider.addEventListener('input', (e) => {
+    const val = parseFloat(e.target.value);
+    batchVolumeText.textContent = Math.round(val * 100) + '%';
+
+    convertedFiles.forEach(fileObj => {
+        fileObj.volume = val;
+        updateWavBlob(fileObj);
+
+        // 各UI側のスライダーやテキストも連動して動かす
+        const slider = document.getElementById(`slider-${fileObj.id}`);
+        const volText = document.getElementById(`vol-text-${fileObj.id}`);
+        if (slider) slider.value = val;
+        if (volText) volText.textContent = Math.round(val * 100) + '%';
+    });
+});
+
+// ZIP展開関連
 async function getOggEntriesFromZip(file) {
     statusDiv.textContent = `${file.name} を展開中...`;
     let zip = new JSZip();
@@ -181,7 +292,7 @@ submitPasswordBtn.addEventListener('click', () => {
     }
 });
 
-// すべて個別にダウンロード
+// ダウンロード系
 downloadAllBtn.addEventListener('click', () => {
     convertedFiles.forEach((file, index) => {
         setTimeout(() => {
@@ -195,7 +306,6 @@ downloadAllBtn.addEventListener('click', () => {
     });
 });
 
-// ZIPにまとめてダウンロード
 downloadZipBtn.addEventListener('click', async () => {
     statusDiv.textContent = 'ZIPファイルを作成中...';
     downloadZipBtn.disabled = true;
@@ -219,8 +329,8 @@ downloadZipBtn.addEventListener('click', async () => {
     downloadZipBtn.disabled = false;
 });
 
-// WAV変換ロジック
-function bufferToWav(buffer) {
+// 音量を適用しながらWAVのArrayBufferを生成するロジック
+function bufferToWav(buffer, volume = 1.0) {
     const numOfChan = buffer.numberOfChannels;
     const sampleRate = buffer.sampleRate;
     const format = 1;
@@ -256,7 +366,7 @@ function bufferToWav(buffer) {
 
     let offset = 44;
     for (let i = 0; i < result.length; i++, offset += 2) {
-        let s = Math.max(-1, Math.min(1, result[i]));
+        let s = Math.max(-1, Math.min(1, result[i] * volume));
         view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
     }
 
