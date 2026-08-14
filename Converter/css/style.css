@@ -1,0 +1,187 @@
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: #f4f7f6;
+    color: #333;
+    max-width: 800px;
+    margin: 40px auto;
+    padding: 20px;
+}
+.container {
+    background: #fff;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    text-align: center;
+}
+h1 {
+    font-size: 24px;
+    margin-bottom: 10px;
+    color: #2c3e50;
+}
+p {
+    color: #7f8c8d;
+    margin-bottom: 25px;
+}
+.drop-zone {
+    border: 2px dashed #bdc3c7;
+    padding: 30px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+    margin-bottom: 20px;
+}
+.drop-zone:hover {
+    background: #f9fbfc;
+    border-color: #3498db;
+}
+input[type="file"] {
+    display: none;
+}
+.btn {
+    background-color: #3498db;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-size: 15px;
+    cursor: pointer;
+    transition: background 0.2s;
+    display: inline-block;
+    text-decoration: none;
+    margin: 5px;
+}
+.btn:hover {
+    background-color: #2980b9;
+}
+.btn-success {
+    background-color: #2ecc71;
+}
+.btn-success:hover {
+    background-color: #27ae60;
+}
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 13px;
+}
+#status {
+    margin-top: 15px;
+    font-weight: bold;
+    color: #e67e22;
+}
+.progress-container {
+    width: 100%;
+    background-color: #e0e0e0;
+    border-radius: 6px;
+    margin-top: 15px;
+    overflow: hidden;
+    display: none;
+}
+.progress-bar {
+    width: 0%;
+    height: 18px;
+    background-color: #3498db;
+    text-align: center;
+    color: white;
+    font-size: 12px;
+    line-height: 18px;
+    transition: width 0.1s ease;
+}
+.toolbar {
+    display: none;
+    background: #f1f4f6;
+    padding: 12px;
+    border-radius: 6px;
+    margin-top: 15px;
+    text-align: left;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+}
+.toolbar input[type="text"], .toolbar select {
+    padding: 6px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+}
+.batch-volume-area {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    margin-top: 5px;
+    padding-top: 8px;
+    border-top: 1px solid #e0e0e0;
+    flex-wrap: wrap;
+}
+.volume-input-number {
+    width: 70px;
+    padding: 4px;
+    text-align: right;
+}
+.file-list {
+    text-align: left;
+    margin-top: 15px;
+    max-height: 380px;
+    overflow-y: auto;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 10px;
+    background: #fafafa;
+}
+.file-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+    font-size: 14px;
+    background: #fff;
+    margin-bottom: 6px;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+}
+.file-item:last-child {
+    margin-bottom: 0;
+}
+.file-info {
+    flex-grow: 1;
+    margin-right: 15px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.file-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+.volume-slider {
+    width: 70px;
+}
+.actions {
+    margin-top: 20px;
+}
+.modal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5);
+    justify-content: center;
+    align-items: center;
+}
+.modal-content {
+    background: #fff;
+    padding: 25px;
+    border-radius: 8px;
+    width: 320px;
+    text-align: center;
+}
+.modal-content input {
+    width: 80%;
+    padding: 8px;
+    margin: 15px 0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
