@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>音声ファイル変換・増幅ツール</title>
-    <!-- ZIP処理用のライブラリ -->
+    <title>音声変換・増幅ツール</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <link rel="stylesheet" href="Converter/css/style.css">
 </head>
@@ -12,41 +11,29 @@
 
     <div class="container">
         <h1>音声ファイル変換・増幅ツール</h1>
-        <p>一括変換・音量指定・ファイル検索・拡張子変更対応</p>
-
-        <div class="drop-zone" id="dropZone">
-            <p>ここに音声ファイル（各種音声、ZIP等）をドロップ<br>または</p>
-            <label class="btn" for="fileInput">ファイルを選ぶ</label>
-            <input type="file" id="fileInput" multiple accept="audio/*,.zip">
-        </div>
-
-        <div id="status"></div>
         
-        <div class="progress-container" id="progressContainer">
-            <div class="progress-bar" id="progressBar">0%</div>
-        </div>
-
-        <!-- ツールバー -->
-        <div class="toolbar" id="toolbar">
-            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; width: 100%;">
-                <input type="text" id="searchInput" placeholder="🔍 ファイル名で検索..." style="flex-grow: 1;">
-                <select id="sortSelect">
-                    <option value="name-asc">名前順 (昇順 A→Z)</option>
-                    <option value="name-desc">名前順 (降順 Z→A)</option>
-                </select>
+        <!-- ツールバー：読み込み前に設定可能 -->
+        <div class="toolbar" id="toolbar" style="display: flex;">
+            <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center; width: 100%; justify-content: center;">
                 <div>
-                    <label for="globalExtSelect" style="font-size: 13px; font-weight: bold;">一括拡張子:</label>
+                    <label for="inputExtSelect" style="font-size: 13px; font-weight: bold;">変換元:</label>
+                    <select id="inputExtSelect">
+                        <option value="all">すべてのファイル</option>
+                        <option value="wav">wav</option>
+                        <option value="mp3">mp3</option>
+                        <option value="m4a">m4a</option>
+                        <option value="flac">flac</option>
+                        <option value="ogg">ogg</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="globalExtSelect" style="font-size: 13px; font-weight: bold;">→ 変換先:</label>
                     <select id="globalExtSelect">
                         <option value="wav">wav</option>
-                        <option value="aiff">aiff</option>
-                        <option value="aif">aif</option>
-                        <option value="flac">flac</option>
-                        <option value="m4a">m4a</option>
                         <option value="mp3">mp3</option>
-                        <option value="aac">aac</option>
+                        <option value="m4a">m4a</option>
+                        <option value="flac">flac</option>
                         <option value="ogg">ogg</option>
-                        <option value="wma">wma</option>
-                        <option value="opus">opus</option>
                     </select>
                 </div>
             </div>
@@ -57,26 +44,32 @@
             </div>
         </div>
 
-        <div class="file-list" id="fileList" style="display: none;"></div>
+        <div class="drop-zone" id="dropZone">
+            <p>音声ファイルを選択またはドロップ</p>
+            <label class="btn" for="fileInput">ファイルを選ぶ</label>
+            <input type="file" id="fileInput" multiple accept="audio/*,.zip">
+        </div>
 
+        <div id="status"></div>
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-bar" id="progressBar">0%</div>
+        </div>
+
+        <div class="file-list" id="fileList" style="display: none;"></div>
         <div class="actions" id="actionArea" style="display: none;">
-            <button class="btn btn-success" id="downloadAllBtn">すべて個別にダウンロード</button>
-            <button class="btn" id="downloadZipBtn">ZIPにまとめてダウンロード</button>
+            <button class="btn btn-success" id="downloadAllBtn">個別ダウンロード</button>
+            <button class="btn" id="downloadZipBtn">ZIPで一括ダウンロード</button>
         </div>
     </div>
 
-    <!-- パスワード入力モーダル -->
     <div class="modal" id="passwordModal">
         <div class="modal-content">
-            <h3>ZIPのパスワードが必要です</h3>
-            <p id="modalFileName" style="font-size: 13px; margin: 5px 0 15px 0;"></p>
-            <input type="password" id="zipPasswordInput" placeholder="パスワードを入力">
-            <br>
+            <h3>パスワード入力</h3>
+            <input type="password" id="zipPasswordInput">
             <button class="btn" id="submitPasswordBtn">決定</button>
         </div>
     </div>
 
-    <!-- スクリプトの読み込み -->
     <script src="Converter/js/audio.js"></script>
     <script src="Converter/js/app.js"></script>
 </body>
