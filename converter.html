@@ -12,7 +12,6 @@
     <div class="container">
         <h1>音声ファイル変換・増幅ツール</h1>
         
-        <!-- ツールバー：変換先の指定と音量調整のみ -->
         <div class="toolbar" id="toolbar" style="display: flex; flex-direction: column; gap: 10px; align-items: center;">
             <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center; width: 100%; justify-content: center;">
                 <div>
@@ -36,7 +35,6 @@
         <div class="drop-zone" id="dropZone">
             <p>音声ファイルを選択またはドロップ</p>
             <label class="btn" for="fileInput">ファイルを選ぶ</label>
-            <!-- すべてのファイルを選択可能 -->
             <input type="file" id="fileInput" multiple>
         </div>
 
@@ -51,6 +49,23 @@
             <button class="btn" id="downloadZipBtn">ZIPで一括ダウンロード</button>
         </div>
     </div>
+
+    <!-- 簡易コンソールボックス -->
+    <div id="consoleBox" style="position: fixed; bottom: 0; left: 0; width: 100%; max-height: 150px; background: rgba(0,0,0,0.85); color: #00ff00; font-family: monospace; font-size: 12px; padding: 10px; box-sizing: border-box; overflow-y: auto; z-index: 9999; display: none;">
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #444; padding-bottom: 4px; margin-bottom: 5px;">
+            <span>🖥️ 簡易コンソール</span>
+            <div>
+                <button onclick="clearConsole()" style="background: #444; color: #fff; border: none; padding: 2px 6px; cursor: pointer; font-size: 10px;">クリア</button>
+                <button onclick="toggleConsole()" style="background: #444; color: #fff; border: none; padding: 2px 6px; cursor: pointer; font-size: 10px;">閉じる</button>
+            </div>
+        </div>
+        <div id="consoleLogs"></div>
+    </div>
+
+    <!-- コンソールを開閉するフローティングボタン -->
+    <button onclick="toggleConsole()" style="position: fixed; bottom: 10px; right: 10px; z-index: 10000; background: #333; color: #fff; border: 1px solid #666; border-radius: 4px; padding: 5px 10px; font-size: 12px; cursor: pointer;">
+        🖥️ ログ表示
+    </button>
 
     <script src="Converter/js/audio.js"></script>
     <script src="Converter/js/app.js"></script>
