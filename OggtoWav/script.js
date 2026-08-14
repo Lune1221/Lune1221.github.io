@@ -16,9 +16,9 @@ const zipPasswordInput = document.getElementById('zipPasswordInput');
 const submitPasswordBtn = document.getElementById('submitPasswordBtn');
 const modalFileName = document.getElementById('modalFileName');
 
-let convertedFiles = []; // { id, name, originalAudioBuffer, volume, blob, url }
+let convertedFiles = [];
 let passwordResolver = null;
-let currentPlayingSource = null; // 現在再生中の音声管理用
+let currentPlayingSource = null;
 
 // ドラッグ＆ドロップ設定
 ['dragenter', 'dragover'].forEach(eventName => {
@@ -56,7 +56,6 @@ function updateProgress(percent, text) {
 async function handleFiles(files) {
     if (files.length === 0) return;
 
-    // 再生中のものがあれば止める
     stopCurrentAudio();
 
     convertedFiles = [];
@@ -99,7 +98,6 @@ async function handleFiles(files) {
     actionArea.style.display = 'block';
 }
 
-// Oggファイルをデコードして保持
 async function processOggFile(file, audioContext, customName, id) {
     try {
         const arrayBuffer = await file.arrayBuffer();
@@ -117,7 +115,6 @@ async function processOggFile(file, audioContext, customName, id) {
             url: null
         };
 
-        // 初期音量でWAVを生成
         updateWavBlob(fileObj);
         convertedFiles.push(fileObj);
 
@@ -131,7 +128,6 @@ async function processOggFile(file, audioContext, customName, id) {
     }
 }
 
-// 音量を適用したWAVのBlobを作る
 function updateWavBlob(fileObj) {
     const wavData = bufferToWav(fileObj.audioBuffer, fileObj.volume);
     fileObj.blob = new Blob([wavData], { type: 'audio/wav' });
@@ -139,7 +135,6 @@ function updateWavBlob(fileObj) {
     fileObj.url = URL.createObjectURL(fileObj.blob);
 }
 
-// リストの項目を画面に描画
 function renderFileItem(fileObj, audioContext) {
     const item = document.createElement('div');
     item.className = 'file-item';
@@ -151,7 +146,7 @@ function renderFileItem(fileObj, audioContext) {
             <div style="font-size: 12px; color: #7f8c8d;">音量: <span id="vol-text-${fileObj.id}">100%</span></div>
         </div>
         <div class="file-controls">
-            <input type="range" class="volume-slider" id="slider-${fileObj.id}" min="0" max="2" step="0.05" value="${fileObj.volume}">
+            <input type="range" class="volume-slider" id="slider-${fileObj.id}" min="0" max="3" step="0.05" value="${fileObj.volume}">
             <button class="btn btn-sm" id="play-btn-${fileObj.id}">▶ デモ再生</button>
         </div>
     `;
@@ -161,14 +156,12 @@ function renderFileItem(fileObj, audioContext) {
     const volText = document.getElementById(`vol-text-${fileObj.id}`);
     const playBtn = document.getElementById(`play-btn-${fileObj.id}`);
 
-    // 個別スライダー変更時
     slider.addEventListener('input', (e) => {
         fileObj.volume = parseFloat(e.target.value);
         volText.textContent = Math.round(fileObj.volume * 100) + '%';
         updateWavBlob(fileObj);
     });
 
-    // デモ再生ボタン
     playBtn.addEventListener('click', () => {
         if (playBtn.textContent.includes('▶')) {
             stopCurrentAudio();
@@ -179,13 +172,13 @@ function renderFileItem(fileObj, audioContext) {
     });
 }
 
-// 音声のデモ再生
+// 試聴時にもしっかりと音量を反映（GainNodeを最大3倍まで有効化）
 function playAudio(fileObj, audioContext, btnElement) {
     const source = audioContext.createBufferSource();
     const gainNode = audioContext.createGain();
 
-    // 音声バッファに音量を掛け合わせる
     source.buffer = fileObj.audioBuffer;
+    // スライダーの値をそのままゲインに反映（最大3倍までブースト）
     gainNode.gain.value = fileObj.volume;
 
     source.connect(gainNode);
@@ -210,13 +203,11 @@ function stopCurrentAudio() {
         } catch(e) {}
         currentPlayingSource = null;
     }
-    // 全てのボタンの表示を戻す
     document.querySelectorAll('[id^="play-btn-"]').forEach(btn => {
         btn.textContent = '▶ デモ再生';
     });
 }
 
-// 一括音量変更スライダー
 batchVolumeSlider.addEventListener('input', (e) => {
     const val = parseFloat(e.target.value);
     batchVolumeText.textContent = Math.round(val * 100) + '%';
@@ -225,7 +216,6 @@ batchVolumeSlider.addEventListener('input', (e) => {
         fileObj.volume = val;
         updateWavBlob(fileObj);
 
-        // 各UI側のスライダーやテキストも連動して動かす
         const slider = document.getElementById(`slider-${fileObj.id}`);
         const volText = document.getElementById(`vol-text-${fileObj.id}`);
         if (slider) slider.value = val;
@@ -233,7 +223,6 @@ batchVolumeSlider.addEventListener('input', (e) => {
     });
 });
 
-// ZIP展開関連
 async function getOggEntriesFromZip(file) {
     statusDiv.textContent = `${file.name} を展開中...`;
     let zip = new JSZip();
@@ -292,7 +281,6 @@ submitPasswordBtn.addEventListener('click', () => {
     }
 });
 
-// ダウンロード系
 downloadAllBtn.addEventListener('click', () => {
     convertedFiles.forEach((file, index) => {
         setTimeout(() => {
@@ -329,7 +317,7 @@ downloadZipBtn.addEventListener('click', async () => {
     downloadZipBtn.disabled = false;
 });
 
-// 音量を適用しながらWAVのArrayBufferを生成するロジック
+// WAV変換と音量増幅ロジックの改善（スライダー範囲を最大300%に拡張）
 function bufferToWav(buffer, volume = 1.0) {
     const numOfChan = buffer.numberOfChannels;
     const sampleRate = buffer.sampleRate;
@@ -359,6 +347,10 @@ function bufferToWav(buffer, volume = 1.0) {
     view.setUint32(24, sampleRate, true);
     view.setUint32(28, sampleRate * numOfChan * (bitDepth / 8), true);
     view.setUint16(32, numOfChan * (bitDepth / 8), true);
+    view.setUint16(34, bitDifference = bitDepth, true); // (修正: bitDepth)
+
+    // 正確な書き込み用再設定
+    view.setUint16(32, numOfChan * (bitDepth / 8), true);
     view.setUint16(34, bitDepth, true);
 
     writeString(view, 36, 'data');
@@ -366,7 +358,12 @@ function bufferToWav(buffer, volume = 1.0) {
 
     let offset = 44;
     for (let i = 0; i < result.length; i++, offset += 2) {
-        let s = Math.max(-1, Math.min(1, result[i] * volume));
+        // 音量を掛け算し、16bitの範囲内に収める（大きくブーストできるように調整）
+        let s = result[i] * volume;
+        // 限界値（クリッピング）で自然に丸める処理
+        if (s > 1.0) s = 1.0;
+        if (s < -1.0) s = -1.0;
+        
         view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
     }
 
