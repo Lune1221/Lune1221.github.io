@@ -74,19 +74,21 @@ function drawPlate() {
 
     if (mode === 'preset') {
         if (imgText.complete && imgText.naturalWidth !== 0) {
-            // 【完全解決のキーポイント】
-            // 本物の画像を重なるレベルで分析し、
-            // 横幅は「0.80倍」、縦幅は上下をギュッと詰めるために「0.71倍」に設定。
-            const scaleX = 0.80 * sMultiplier; 
-            const scaleY = 0.71 * sMultiplier; 
+            // 【超重要：歪みバグ修正】
+            // 文字画像が本来持っている「本物の縦横比（アスペクト比）」を計算します。
+            const imgRatio = imgText.naturalWidth / imgText.naturalHeight;
             
-            const w = canvas.width * scaleX;
-            const h = canvas.height * scaleY;
+            // 本物の段位プレートとしてちょうど良い基本サイズ（横幅180px）を基準にします。
+            const baseWidth = 180;
             
-            // 無理なマイナス数値を廃止し、純粋な中央配置にスライダーの値を足すだけに修正。
-            // 初期状態（スライダーが0のとき）で本物と完全に一致します。
+            // スライダーの値を考慮した、最終的な横幅と縦幅を計算します。
+            // 縦幅は、計算した横幅に画像本来の比率を掛け算して決めるため、絶対に横に伸びません。
+            const w = baseWidth * sMultiplier;
+            const h = (baseWidth / imgRatio) * sMultiplier;
+            
+            // 計算された正しいサイズを、板のド真ん中に配置します。
             const x = ((canvas.width - w) / 2) + offsetX;
-            const y = ((canvas.height - h) / 2) - 45 + offsetY; // 上下の基準位置だけ少し上に持ち上げ
+            const y = ((canvas.height - h) / 2) - 15 + offsetY; 
             
             ctx.drawImage(imgText, x, y, w, h);
         }
