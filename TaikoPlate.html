@@ -57,22 +57,26 @@
         <div class="slider-panel">
             <div class="slider-row">
                 <label>サイズ倍率</label>
-                <input type="range" id="sizeSlider" min="30" max="150" value="82">
-                <span class="slider-value" id="sizeValue">82%</span>
+                <input type="range" id="sizeSlider" min="30" max="150" value="100">
+                <span class="slider-value" id="sizeValue">100%</span>
             </div>
             <div class="slider-row">
                 <label>左右位置(X)</label>
-                <input type="range" id="xSlider" min="-100" max="100" value="-5">
-                <span class="slider-value" id="xValue">-5</span>
+                <input type="range" id="xSlider" min="-100" max="100" value="0">
+                <span class="slider-value" id="xValue">0</span>
             </div>
             <div class="slider-row">
                 <label>上下位置(Y)</label>
-                <input type="range" id="ySlider" min="-100" max="100" value="-40">
-                <span class="slider-value" id="yValue">-40</span>
+                <input type="range" id="ySlider" min="-100" max="100" value="0">
+                <span class="slider-value" id="yValue">0</span>
             </div>
         </div>
     </div>
-    
+<div class="control-group">
+    <p style="color: #ff9f00; font-size: 13px; font-weight: bold; margin-top: 5px; text-align: center; background: rgba(255,159,0,0.1); padding: 8px; border-radius: 6px; border: 1px dashed #ff9f00;">
+        公式パーツのおすすめ目安：サイズ 82% | 左右位置 -5 | 上下位置 -40
+    </p>
+</div>
     <div class="canvas-container">
         <canvas id="plateCanvas"></canvas>
         <img id="plateView" class="result-image" alt="段位プレート">
