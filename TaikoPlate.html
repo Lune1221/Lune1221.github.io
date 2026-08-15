@@ -66,7 +66,9 @@
             max-height: 450px;
             border-radius: 8px;
         }
-        button {
+        /* ダウンロードボタンのスタイル */
+        .save-btn {
+            display: block;
             background: linear-gradient(135deg, #00fff0, #0083ff);
             color: #000;
             border: none;
@@ -77,8 +79,10 @@
             font-weight: bold;
             transition: transform 0.2s, box-shadow 0.2s;
             width: 100%;
+            text-decoration: none;
+            box-sizing: border-box;
         }
-        button:hover {
+        .save-btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(0,255,240,0.4);
         }
@@ -130,7 +134,8 @@
         <canvas id="plateCanvas" width="240" height="520"></canvas>
     </div>
     
-    <button id="downloadBtn">画像を保存する (.png)</button>
+    <!-- Safari対策として、ボタンをプログラム連動リンク形式に変更 -->
+    <a id="downloadBtn" class="save-btn" href="#">画像を保存する (.png)</a>
 </div>
 
 <script>
@@ -189,18 +194,17 @@
 
         if (mode === 'preset') {
             if (imgText.complete && imgText.naturalWidth !== 0) {
-                // 【超・微調整ポイント】
-                // 本物のバランスに合わせるため、横幅は「0.74倍」、縦幅は少し長めの「0.78倍」に設定
                 const scaleX = 0.74; 
                 const scaleY = 0.78; 
                 
                 const w = canvas.width * scaleX;
                 const h = canvas.height * scaleY;
                 
-                // 本物の画像のように「達人」の文字位置を少し中央寄りに下げるため、
-                // Xのズレを「-10」、Yのズレを「+5（少し下へ）」に変更しました。
-                const x = ((canvas.width - w) / 2) - 10;
-                const y = ((canvas.height - h) / 2) + 5; 
+                // 【位置のズレを完璧に修正】
+                // さらに左側に寄せるため、横（X）のマイナスを「-10」から「-22」に強化しました。
+                // 上下の高さ（Y）も微調整して本物に合わせます。
+                const x = ((canvas.width - w) / 2) - 22;
+                const y = ((canvas.height - h) / 2) + 2; 
                 
                 ctx.drawImage(imgText, x, y, w, h);
             }
@@ -229,6 +233,9 @@
                 ctx.fillText(char, x, y);
             });
         }
+        
+        // 描画が終わるたびに、ダウンロード用のリンクデータをボタンに最新化して焼き付ける（Safari対策）
+        downloadBtn.href = canvas.toDataURL('image/png');
     }
 
     bgSelect.addEventListener('change', loadAssets);
@@ -236,11 +243,9 @@
     customInput.addEventListener('input', drawPlate);
     textModeRadios.forEach(radio => radio.addEventListener('change', updateModeVisibility));
 
-    downloadBtn.addEventListener('click', () => {
-        const link = document.createElement('a');
-        link.download = 'taiko_plate.png';
-        link.href = canvas.toDataURL('image/png');
-        link.click();
+    // ボタンをクリックしたときのダウンロード処理（最新の安全な記述方法）
+    downloadBtn.addEventListener('click', (e) => {
+        downloadBtn.download = 'taiko_plate.png';
     });
 
     updateModeVisibility();
