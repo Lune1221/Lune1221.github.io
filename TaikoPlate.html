@@ -5,10 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>太鼓風 縦型段位プレートメーカー</title>
     <style>
-        /* 【修正】教えていただいたGitHubの生URLを直接指定して確実にフォントを読み込みます */
         @font-face {
             font-family: 'TaikoFont';
-            src: url('https://github.com/Lune1221/Lune1221.github.io/raw/refs/heads/main/FOT-%E5%A4%A7%E6%B1%9F%E6%88%B8%E5%8B%98%E4%BA%AD%E6%B5%81%20Std%20E.otf') format('opentype');
+            src: url('https://github.com') format('opentype');
         }
         body {
             font-family: 'Helvetica Neue', Arial, sans-serif;
@@ -62,29 +61,19 @@
             text-align: center;
         }
         canvas {
-            background: transparent;
+            display: none; /* 内部処理用 */
+        }
+        .result-image {
             max-width: 100%;
-            max-height: 450px;
+            max-height: 480px;
             border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
-        .save-btn {
-            display: block;
-            background: linear-gradient(135deg, #00fff0, #0083ff);
-            color: #000;
-            border: none;
-            padding: 14px 32px;
-            font-size: 16px;
-            border-radius: 8px;
-            cursor: pointer;
+        .note {
+            color: #ff4757;
+            font-size: 13px;
             font-weight: bold;
-            transition: transform 0.2s, box-shadow 0.2s;
-            width: 100%;
-            text-decoration: none;
-            box-sizing: border-box;
-        }
-        .save-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,255,240,0.4);
+            margin-top: 10px;
         }
     </style>
 </head>
@@ -132,14 +121,15 @@
     
     <div class="canvas-container">
         <canvas id="plateCanvas" width="240" height="520"></canvas>
+        <img id="plateView" class="result-image" alt="段位プレート">
+        <p class="note">【保存方法】上のプレート画像を長押しして保存してください</p>
     </div>
-    
-    <a id="downloadBtn" class="save-btn" href="#">画像を保存する (.png)</a>
 </div>
 
 <script>
     const canvas = document.getElementById('plateCanvas');
     const ctx = canvas.getContext('2d');
+    const plateView = document.getElementById('plateView');
     
     const bgSelect = document.getElementById('bgSelect');
     const textModeRadios = document.getElementsByName('textMode');
@@ -147,7 +137,6 @@
     const presetSelect = document.getElementById('presetSelect');
     const customGroup = document.getElementById('customGroup');
     const customInput = document.getElementById('customInput');
-    const downloadBtn = document.getElementById('downloadBtn');
 
     let imgBg = new Image();
     let imgText = new Image();
@@ -155,7 +144,6 @@
     imgBg.onload = onAssetLoad;
     imgText.onload = onAssetLoad;
 
-    // フォントがウェブサイト側に完全に読み込まれたら自動で再描画する処理
     document.fonts.load("12px 'TaikoFont'").then(() => {
         drawPlate();
     });
@@ -190,6 +178,7 @@
     function drawPlate() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+        // 1. 背景の木目板を描画（等倍で重ねる）
         if (imgBg.complete && imgBg.naturalWidth !== 0) {
             ctx.drawImage(imgBg, 0, 0, canvas.width, canvas.height);
         }
@@ -197,57 +186,58 @@
         const mode = document.querySelector('input[name="textMode"]:checked').value;
 
         if (mode === 'preset') {
+            // 2-A. 【完全修正】公式パーツをズレや縮小なしで「等倍（100%）」でそのまま重ねる
+            // これにより、あなたの切り抜きそのままの完璧な配置（ド真ん中）になります。
             if (imgText.complete && imgText.naturalWidth !== 0) {
-                const scaleX = 0.74; 
-                const scaleY = 0.78; 
-                
-                const w = canvas.width * scaleX;
-                const h = canvas.height * scaleY;
-                
-                // 【最終調整】左右のバランスをさらに微調整（-22 → -24）してド真ん中に配置
-                const x = ((canvas.width - w) / 2) - 24;
-                const y = ((canvas.height - h) / 2) + 2; 
-                
-                ctx.drawImage(imgText, x, y, w, h);
+                ctx.drawImage(imgText, 0, 0, canvas.width, canvas.height);
             }
         } else {
+            // 2-B. 【完全修正】自由入力テキストのバグを修正
             const text = customInput.value || "初段";
-            // 登録した 'TaikoFont'（大江戸勘亭流）を確実に適用
-            ctx.font = "italic bold 40px 'TaikoFont', 'Hiragino Kaku Gothic ProN', sans-serif";
+            
+            // 本家と同じド迫力のサイズ（110px）に拡大
+            ctx.font = "italic bold 110px 'TaikoFont', 'Hiragino Kaku Gothic ProN', sans-serif";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.lineJoin = 'round';
 
             const chars = text.split('');
-            const startY = (canvas.height / 2) - ((chars.length - 1) * 30);
+            // 文字が中央に綺麗に収まる開始位置の計算
+            const startY = (canvas.height / 2) - ((chars.length - 1) * 60) - 40;
 
             chars.forEach((char, index) => {
                 const x = canvas.width / 2;
-                const y = startY + (index * 60);
+                const y = startY + (index * 120);
 
-                ctx.strokeStyle = '#000000'; ctx.lineWidth = 12; ctx.strokeText(char, x, y);
-                ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 6;  ctx.strokeText(char, x, y);
-                ctx.strokeStyle = '#000000'; ctx.lineWidth = 2.5; ctx.strokeText(char, x, y);
+                // 各文字を描画する直前に、フチが丸くなる設定を確実に適用（斜めになる・潰れるのを防ぐ）
+                ctx.lineJoin = 'round';
+                ctx.lineCap = 'round';
 
-                let textGrad = ctx.createLinearGradient(0, y - 20, 0, y + 20);
+                // 一番太い黒フチ
+                ctx.strokeStyle = '#000000'; ctx.lineWidth = 26; ctx.strokeText(char, x, y);
+                // 真ん中の白フチ
+                ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 14; ctx.strokeText(char, x, y);
+                // 内側の細い黒フチ
+                ctx.strokeStyle = '#000000'; ctx.lineWidth = 4;  ctx.strokeText(char, x, y);
+
+                // 文字の中身（白〜薄いグレーのグラデーション）
+                let textGrad = ctx.createLinearGradient(0, y - 50, 0, y + 50);
                 textGrad.addColorStop(0, '#ffffff');
-                textGrad.addColorStop(1, '#cccccc');
+                textGrad.addColorStop(1, '#e6e6e6');
                 ctx.fillStyle = textGrad;
+                
+                // フチの上に文字を塗りつぶすことで、中身が白く残るように修正
                 ctx.fillText(char, x, y);
             });
         }
         
-        downloadBtn.href = canvas.toDataURL('image/png');
+        // データを画像要素へ転送
+        plateView.src = canvas.toDataURL('image/png');
     }
 
     bgSelect.addEventListener('change', loadAssets);
     presetSelect.addEventListener('change', loadAssets);
     customInput.addEventListener('input', drawPlate);
     textModeRadios.forEach(radio => radio.addEventListener('change', updateModeVisibility));
-
-    downloadBtn.addEventListener('click', (e) => {
-        downloadBtn.download = 'taiko_plate.png';
-    });
 
     updateModeVisibility();
 </script>
