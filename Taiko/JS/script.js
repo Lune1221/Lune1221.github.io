@@ -57,12 +57,8 @@ function drawPlate() {
         let w = canvas.width * sMultiplier;
         let h = canvas.height * sMultiplier;
 
-        // 【大バグ解決：パーツごとの個別比率補正】
-        // 選択されている文字パーツ（ファイル名）をチェックします。
-        // もし「達人（TATSUJIN.png）」以外が選ばれている場合は、
-        // 元画像が横長になってしまっている分を打ち消すため、横幅（w）だけを「0.85倍」にキュッと縮めます。
-        if (!presetSelect.value.includes('TATSUJIN.png')) {
-            w = w * 0.85; // 玄人、超人、名人、外伝、創作の横太りを自動で補正
+        if (!presetSelect.value.includes('TATSUJIN.png') && !presetSelect.value.includes('Original.png')) {
+            w = w * 0.85; 
         }
         
         const x = ((canvas.width - w) / 2) + offsetX;
