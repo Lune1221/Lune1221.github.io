@@ -127,7 +127,6 @@
     </div>
     
     <div class="canvas-container">
-        <!-- 【変更】下の文字が切れないように、高さを520に広げました -->
         <canvas id="plateCanvas" width="240" height="520"></canvas>
     </div>
     
@@ -182,7 +181,6 @@
     function drawPlate() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // 1. 背景の木目板を描画（キャンバスいっぱいに表示）
         if (imgBg.complete && imgBg.naturalWidth !== 0) {
             ctx.drawImage(imgBg, 0, 0, canvas.width, canvas.height);
         }
@@ -190,22 +188,23 @@
         const mode = document.querySelector('input[name="textMode"]:checked').value;
 
         if (mode === 'preset') {
-            // 2-A. 公式文字パーツを小さく中央に重ねる
             if (imgText.complete && imgText.naturalWidth !== 0) {
-                // 【変更ポイント】
-                // 文字のサイズを「元の板の76%」に縮小（倍率 0.76）
-                const scale = 0.76; 
-                const w = canvas.width * scale;
-                const h = canvas.height * scale;
+                // 【超・微調整ポイント】
+                // 本物のバランスに合わせるため、横幅は「0.74倍」、縦幅は少し長めの「0.78倍」に設定
+                const scaleX = 0.74; 
+                const scaleY = 0.78; 
                 
-                // 真ん中に配置されるようにスタート位置（左上の座標）を計算
-                const x = (canvas.width - w) / 2;
-                const y = (canvas.height - h) / 2 + 5; // 上下の微調整（少し下に下げる）
+                const w = canvas.width * scaleX;
+                const h = canvas.height * scaleY;
+                
+                // 本物の画像のように「達人」の文字位置を少し中央寄りに下げるため、
+                // Xのズレを「-10」、Yのズレを「+5（少し下へ）」に変更しました。
+                const x = ((canvas.width - w) / 2) - 10;
+                const y = ((canvas.height - h) / 2) + 5; 
                 
                 ctx.drawImage(imgText, x, y, w, h);
             }
         } else {
-            // 2-B. 自由入力テキストを縦書き描画（自由入力の文字サイズも少し小さめの40pxに調整）
             const text = customInput.value || "初段";
             ctx.font = "italic bold 40px 'TaikoFont', 'Hiragino Kaku Gothic ProN', sans-serif";
             ctx.textAlign = "center";
