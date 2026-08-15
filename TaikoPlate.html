@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>太鼓の達人 段位プレートメーカー</title>
-    <!-- 分離したCSSファイルを読み込む -->
+    <title>太鼓風 縦型段位プレートメーカー</title>
     <link rel="stylesheet" href="Taiko/CSS/style.css">
 </head>
 <body>
 
 <div class="container">
-    <h2>太鼓の達人プレートメーカー</h2>
+    <h2>太鼓風 縦型プレートメーカー</h2>
     
+    <!-- 1. 背景の板を選ぶ -->
     <div class="control-group">
-        <label for="bgSelect">プレートの背景</label>
+        <label for="bgSelect">プレートの背景（木目）</label>
         <select id="bgSelect">
             <option value="images/Yellow_Plate.png">五級〜一級（黄色）</option>
             <option value="images/Blue_Plate.png">初段〜五段（青色）</option>
@@ -24,15 +24,8 @@
         </select>
     </div>
 
+    <!-- 2. 公式パーツの選択（ラジオボタンを廃止し標準化） -->
     <div class="control-group">
-        <label>文字の配置方法</label>
-        <div class="radio-group">
-            <label><input type="radio" name="textMode" value="preset" checked> 公式パーツを使う</label>
-            <label><input type="radio" name="textMode" value="custom"> 自由に入力する</label>
-        </div>
-    </div>
-
-    <div class="control-group" id="presetGroup">
         <label for="presetSelect">公式文字パーツ</label>
         <select id="presetSelect">
             <option value="images/TATSUJIN.png">達人</option>
@@ -44,43 +37,38 @@
         </select>
     </div>
 
-    <div class="control-group" id="customGroup" style="display: none;">
-        <label for="customInput">自由な文字（※1文字ずつ改行されます）</label>
-        <input type="text" id="customInput" value="初段" maxlength="4" style="margin-bottom: 10px;">
-        
-        <label for="textColorInput">文字の中の色（単色）</label>
-        <input type="color" id="textColorInput" value="#ffffff">
-    </div>
-
+    <!-- 3. 文字のレイアウト調整（手動） -->
     <div class="control-group">
         <label>文字のレイアウト調整（手動）</label>
         <div class="slider-panel">
             <div class="slider-row">
                 <label>サイズ倍率</label>
-                <input type="range" id="sizeSlider" min="30" max="150" value="100">
-                <span class="slider-value" id="sizeValue">100%</span>
+                <input type="range" id="sizeSlider" min="30" max="150" value="64">
+                <span class="slider-value" id="sizeValue">64%</span>
             </div>
             <div class="slider-row">
                 <label>左右位置(X)</label>
-                <input type="range" id="xSlider" min="-100" max="100" value="0">
-                <span class="slider-value" id="xValue">0</span>
+                <input type="range" id="xSlider" min="-100" max="100" value="-5">
+                <span class="slider-value" id="xValue">-5</span>
             </div>
             <div class="slider-row">
                 <label>上下位置(Y)</label>
-                <input type="range" id="ySlider" min="-100" max="100" value="0">
-                <span class="slider-value" id="yValue">0</span>
+                <input type="range" id="ySlider" min="-100" max="100" value="-40">
+                <span class="slider-value" id="yValue">-40</span>
             </div>
         </div>
     </div>
+    
     <div class="canvas-container">
         <canvas id="plateCanvas"></canvas>
         <img id="plateView" class="result-image" alt="段位プレート">
         <p class="note">【保存方法】上のプレート画像を長押しして保存してください</p>
-        <p class="note">公式パーツのおすすめ目安：サイズ 64% | 左右位置 -5 | 上下位置 -40</p>
+        <p style="color: #8a8a9e; font-size: 12px; margin-top: 0; margin-bottom: 15px;">
+            ※おすすめ設定目安：サイズ 64% / 左右 -5 / 上下 -40
+        </p>
     </div>
 </div>
 
-<!-- 分離したJavaScriptファイルを読み込む -->
 <script src="Taiko/JS/script.js"></script>
 </body>
 </html>
