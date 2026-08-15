@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>太鼓風 段位プレートメーカー</title>
+    <title>太鼓風 縦型段位プレートメーカー</title>
     <style>
         @font-face {
             font-family: 'TaikoFont';
@@ -18,10 +18,10 @@
             padding: 20px;
         }
         .container {
-            max-width: 600px;
+            max-width: 500px;
             margin: 0 auto;
             background: #161623;
-            padding: 30px;
+            padding: 25px;
             border-radius: 16px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             border: 1px solid #2e2e4f;
@@ -51,15 +51,20 @@
         select:focus, input[type="text"]:focus {
             border-color: #00fff0;
         }
+        .radio-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 5px;
+        }
         .canvas-container {
-            margin: 25px 0;
-            overflow-x: auto;
+            margin: 20px 0;
+            text-align: center;
         }
         canvas {
-            background: #222;
+            background: transparent;
             max-width: 100%;
+            max-height: 450px;
             border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
         button {
             background: linear-gradient(135deg, #00fff0, #0083ff);
@@ -82,27 +87,51 @@
 <body>
 
 <div class="container">
-    <h2>太鼓風 段位プレートメーカー</h2>
+    <h2>太鼓風 縦型プレートメーカー</h2>
     
+    <!-- 1. 背景の板を選ぶ -->
     <div class="control-group">
-        <label for="plateType">プレートの種類（背景色）</label>
-        <select id="plateType">
-            <option value="wood_orange">五級〜一級（薄茶色の木目）</option>
-            <option value="wood_blue">初段〜五段（青色の木目）</option>
-            <option value="wood_red">六段〜十段（赤色の木目）</option>
-            <option value="wood_silver">玄人〜超人（銀色の木目）</option>
-            <option value="wood_gold">達人（金色の木目）</option>
-            <option value="wood_white">白（創作・外伝など）</option>
+        <label for="bgSelect">プレートの背景（木目）</label>
+        <select id="bgSelect">
+            <option value="images/Yellow_Plate.png">五級〜一級（黄色）</option>
+            <option value="images/Blue_Plate.png">初段〜五段（青色）</option>
+            <option value="images/Red_Plate.png">六段〜十段（赤色）</option>
+            <option value="images/Silver_Plate.png">玄人〜超人（銀色）</option>
+            <option value="images/Gold_Plate.png">達人（金色）</option>
+            <option value="images/White_Plate.png">白（創作・外伝など）</option>
         </select>
     </div>
 
+    <!-- 2. 文字の入れ方を選ぶ -->
     <div class="control-group">
-        <label for="danName">表示する文字</label>
-        <input type="text" id="danName" value="達人" maxlength="6" placeholder="段位名を入力">
+        <label>文字の配置方法</label>
+        <div class="radio-group">
+            <label><input type="radio" name="textMode" value="preset" checked> 公式パーツを使う</label>
+            <label><input type="radio" name="textMode" value="custom"> 自由に入力する</label>
+        </div>
+    </div>
+
+    <!-- 3. 公式パーツの選択肢 -->
+    <div class="control-group" id="presetGroup">
+        <label for="presetSelect">公式文字パーツ</label>
+        <select id="presetSelect">
+            <option value="images/TATSUJIN.png">達人</option>
+            <option value="images/KUROTO.png">玄人</option>
+            <option value="images/CHOJIN.png">超人</option>
+            <option value="images/MEIJIN.png">名人</option>
+            <option value="images/Gaiden.png">外伝</option>
+            <option value="images/Original.png">創作</option>
+        </select>
+    </div>
+
+    <!-- 4. 自由入力欄 -->
+    <div class="control-group" id="customGroup" style="display: none;">
+        <label for="customInput">自由な文字（※1文字ずつ改行されます）</label>
+        <input type="text" id="customInput" value="初段" maxlength="4">
     </div>
     
     <div class="canvas-container">
-        <canvas id="plateCanvas" width="500" height="190"></canvas>
+        <canvas id="plateCanvas" width="240" height="480"></canvas>
     </div>
     
     <button id="downloadBtn">画像を保存する (.png)</button>
@@ -111,122 +140,104 @@
 <script>
     const canvas = document.getElementById('plateCanvas');
     const ctx = canvas.getContext('2d');
-    const danInput = document.getElementById('danName');
-    const plateTypeSelect = document.getElementById('plateType');
+    
+    const bgSelect = document.getElementById('bgSelect');
+    const textModeRadios = document.getElementsByName('textMode');
+    const presetGroup = document.getElementById('presetGroup');
+    const presetSelect = document.getElementById('presetSelect');
+    const customGroup = document.getElementById('customGroup');
+    const customInput = document.getElementById('customInput');
     const downloadBtn = document.getElementById('downloadBtn');
 
-    // 読み込み完了フラグ
-    let loadedCount = 0;
-    const totalImages = 2;
+    let imgBg = new Image();
+    let imgText = new Image();
 
-    function onImageLoad() {
-        loadedCount++;
-        // 2枚の画像が両方とも読み込み完了したら描画する
-        if (loadedCount >= totalImages) {
+    imgBg.onload = onAssetLoad;
+    imgText.onload = onAssetLoad;
+
+    function onAssetLoad() {
+        drawPlate();
+    }
+
+    function updateModeVisibility() {
+        const mode = document.querySelector('input[name="textMode"]:checked').value;
+        if (mode === 'preset') {
+            presetGroup.style.display = 'block';
+            customGroup.style.display = 'none';
+        } else {
+            presetGroup.style.display = 'none';
+            customGroup.style.display = 'block';
+        }
+        loadAssets();
+    }
+
+    function loadAssets() {
+        imgBg.src = bgSelect.value;
+        const mode = document.querySelector('input[name="textMode"]:checked').value;
+        if (mode === 'preset') {
+            imgText.src = presetSelect.value;
+        } else {
+            imgText.src = '';
             drawPlate();
         }
     }
 
-    const imgFrame = new Image();
-    imgFrame.onload = onImageLoad;
-    imgFrame.src = 'dani_Slice_3_.png'; 
-
-    const imgSprites = new Image();
-    imgSprites.src = '段位プレート.png'; 
-    imgSprites.onload = onImageLoad;
-
-    // 画像切り抜き座標の定義
-    const spritePositions = {
-        wood_orange: { x: 15,  y: 15,  w: 110, h: 225 }, 
-        wood_blue:   { x: 15,  y: 285, w: 110, h: 225 }, 
-        wood_red:    { x: 15,  y: 550, w: 110, h: 225 }, 
-        wood_silver: { x: 145, y: 15,  w: 110, h: 225 }, 
-        wood_gold:   { x: 145, y: 285, w: 110, h: 225 }, 
-        wood_white:  { x: 145, y: 550, w: 110, h: 225 }  
-    };
-
     function drawPlate() {
-        // 画像がまだ読み込まれていない場合は処理をスキップしてフリーズを防ぐ
-        if (loadedCount < totalImages) return;
-
-        const text = danInput.value || "達人";
-        const selectedType = plateTypeSelect.value;
-        
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // 1. 木目背景を切り抜いて回転描画
-        const pos = spritePositions[selectedType];
-        ctx.save();
-        ctx.translate(canvas.width / 2, canvas.height / 2);
-        ctx.rotate(-90 * Math.PI / 180); 
-        ctx.drawImage(
-            imgSprites, 
-            pos.x, pos.y, pos.w, pos.h, 
-            -canvas.height / 2 + 12, -canvas.width / 2 + 12, 
-            canvas.height - 24, canvas.width - 24
-        );
-        ctx.restore();
-
-        // 2. 外枠（dani_Slice_3_.png）を重ねて回転描画
-        ctx.save();
-        ctx.translate(canvas.width / 2, canvas.height / 2);
-        ctx.rotate(-90 * Math.PI / 180); 
-        ctx.drawImage(imgFrame, -canvas.height / 2, -canvas.width / 2, canvas.height, canvas.width);
-        ctx.restore();
-
-        // 3. 文字の描画
-        ctx.font = "italic bold 70px 'TaikoFont', 'Hiragino Kaku Gothic ProN', sans-serif";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-
-        const x = canvas.width / 2;
-        const y = canvas.height / 2 + 5; 
-
-        ctx.lineJoin = 'round';
-        
-        // 黒フチ（太）
-        ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 18;
-        ctx.strokeText(text, x, y);
-
-        // 白フチ（中）
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 10;
-        ctx.strokeText(text, x, y);
-
-        // 黒フチ（細）
-        ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 4;
-        ctx.strokeText(text, x, y);
-
-        // 文字本体のグラデーション
-        let textGrad = ctx.createLinearGradient(0, y - 35, 0, y + 35);
-        if (selectedType === 'wood_gold') {
-            textGrad.addColorStop(0, '#ff2a2a');
-            textGrad.addColorStop(1, '#ff9f00');
-        } else if (selectedType === 'wood_silver') {
-            textGrad.addColorStop(0, '#d12eff');
-            textGrad.addColorStop(1, '#6300b3');
-        } else {
-            textGrad.addColorStop(0, '#ffffff');
-            textGrad.addColorStop(1, '#dddddd');
+        // 1. 背景の木目板を描画
+        if (imgBg.complete && imgBg.naturalWidth !== 0) {
+            ctx.drawImage(imgBg, 0, 0, canvas.width, canvas.height);
         }
-        
-        ctx.fillStyle = textGrad;
-        ctx.fillText(text, x, y);
+
+        const mode = document.querySelector('input[name="textMode"]:checked').value;
+
+        if (mode === 'preset') {
+            // 2-A. 公式文字パーツ画像を重ねる
+            if (imgText.complete && imgText.naturalWidth !== 0) {
+                ctx.drawImage(imgText, 0, 0, canvas.width, canvas.height);
+            }
+        } else {
+            // 2-B. 自由入力テキストを縦書き描画
+            const text = customInput.value || "初段";
+            ctx.font = "italic bold 50px 'TaikoFont', 'Hiragino Kaku Gothic ProN', sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.lineJoin = 'round';
+
+            const chars = text.split('');
+            const startY = (canvas.height / 2) - ((chars.length - 1) * 35);
+
+            chars.forEach((char, index) => {
+                const x = canvas.width / 2;
+                const y = startY + (index * 70);
+
+                ctx.strokeStyle = '#000000'; ctx.lineWidth = 14; ctx.strokeText(char, x, y);
+                ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 8;  ctx.strokeText(char, x, y);
+                ctx.strokeStyle = '#000000'; ctx.lineWidth = 3;  ctx.strokeText(char, x, y);
+
+                let textGrad = ctx.createLinearGradient(0, y - 25, 0, y + 25);
+                textGrad.addColorStop(0, '#ffffff');
+                textGrad.addColorStop(1, '#cccccc');
+                ctx.fillStyle = textGrad;
+                ctx.fillText(char, x, y);
+            });
+        }
     }
 
-    // フォーム操作時のリアルタイム描画
-    danInput.addEventListener('input', drawPlate);
-    plateTypeSelect.addEventListener('change', drawPlate);
+    bgSelect.addEventListener('change', loadAssets);
+    presetSelect.addEventListener('change', loadAssets);
+    customInput.addEventListener('input', drawPlate);
+    textModeRadios.forEach(radio => radio.addEventListener('change', updateModeVisibility));
 
-    // 画像保存
     downloadBtn.addEventListener('click', () => {
         const link = document.createElement('a');
-        link.download = `${danInput.value || '段位'}_plate.png`;
+        link.download = 'taiko_plate.png';
         link.href = canvas.toDataURL('image/png');
         link.click();
     });
+
+    updateModeVisibility();
 </script>
 
 </body>
