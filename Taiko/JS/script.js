@@ -36,9 +36,19 @@ function updateModeVisibility() {
     if (mode === 'preset') {
         presetGroup.style.display = 'block';
         customGroup.style.display = 'none';
+        
+        // 【新機能】公式パーツモードの時は、あなたが発見した黄金比をスライダーの初期値として自動セットします
+        sizeSlider.value = 82;
+        xSlider.value = -5;
+        ySlider.value = -40;
     } else {
         presetGroup.style.display = 'none';
         customGroup.style.display = 'block';
+        
+        // 自由入力モードの時は、文字がはみ出さないように100%を基準にします
+        sizeSlider.value = 100;
+        xSlider.value = 0;
+        ySlider.value = 0;
     }
     loadAssets();
 }
@@ -55,21 +65,17 @@ function loadAssets() {
 }
 
 function drawPlate() {
-    // 【重要：歪みバグの根本修正】
-    // 背景画像が読み込まれていたら、キャンバスの縦横サイズを「画像の本物のピクセル数」に強制変更します。
-    // これにより、HTML側でどんなサイズが指定されていても、型枠の比率が画像と100%完全一致します。
     if (imgBg.complete && imgBg.naturalWidth !== 0) {
         canvas.width = imgBg.naturalWidth;
         canvas.height = imgBg.naturalHeight;
     } else {
-        // 画像がまだ無い場合の安全用の初期サイズ
         canvas.width = 240;
         canvas.height = 520;
     }
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // 1. 背景の木目板を描画（等倍・無変形）
+    // 1. 背景の木目板を描画（等倍）
     if (imgBg.complete && imgBg.naturalWidth !== 0) {
         ctx.drawImage(imgBg, 0, 0, canvas.width, canvas.height);
     }
@@ -85,13 +91,11 @@ function drawPlate() {
     yValue.textContent = (offsetY >= 0 ? "+" : "") + offsetY;
 
     if (mode === 'preset') {
-        // 2-A. 公式文字パーツ描画（等倍ベース・スライダー連動）
+        // 2-A. 公式文字パーツ描画（等倍・無変形・黄金比スライダー連動）
         if (imgText.complete && imgText.naturalWidth !== 0) {
-            // 背景と同じサイズで切り抜かれているため、同じサイズ（等倍）をベースに拡縮します
             const w = canvas.width * sMultiplier;
             const h = canvas.height * sMultiplier;
             
-            // スライダーが初期値（+0）の時は、完全にド真ん中に配置されます
             const x = ((canvas.width - w) / 2) + offsetX;
             const y = ((canvas.height - h) / 2) + offsetY; 
             
@@ -102,7 +106,6 @@ function drawPlate() {
         const text = customInput.value || "初段";
         const singleColor = textColorInput.value;
         
-        // キャンバスの元サイズに合わせてフォントサイズを動的に計算
         const baseFontSize = Math.round((canvas.width * 0.45) * sMultiplier);
         ctx.font = "italic bold " + baseFontSize + "px 'TaikoFont', 'Hiragino Kaku Gothic ProN', sans-serif";
         ctx.textAlign = "center";
@@ -127,7 +130,6 @@ function drawPlate() {
         });
     }
     
-    // 生成結果を長押し用画像タグへ反映
     plateView.src = canvas.toDataURL('image/png');
 }
 
