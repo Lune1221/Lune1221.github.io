@@ -1,5 +1,3 @@
-// 保存先: Taiko/JS/script.js の中身を以下にすべて上書きしてください
-
 const canvas = document.getElementById('plateCanvas');
 const ctx = canvas.getContext('2d');
 const plateView = document.getElementById('plateView');
