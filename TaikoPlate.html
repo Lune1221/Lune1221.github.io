@@ -7,7 +7,7 @@
     <style>
         @font-face {
             font-family: 'TaikoFont';
-            src: url('Taiko Plate/FOT-大江戸勘亭流 Std E.otf') format('opentype');
+            src: url('FOT-大江戸勘亭流 Std E.otf') format('opentype');
         }
         body {
             font-family: 'Helvetica Neue', Arial, sans-serif;
@@ -89,7 +89,6 @@
 <div class="container">
     <h2>太鼓風 段位プレートメーカー</h2>
     
-    <!-- プレートタイプの選択（背景の木目の色を切り替える） -->
     <div class="control-group">
         <label for="plateType">プレートの種類（背景色）</label>
         <select id="plateType">
@@ -102,19 +101,16 @@
         </select>
     </div>
 
-    <!-- 文字の入力 -->
     <div class="control-group">
         <label for="danName">表示する文字</label>
         <input type="text" id="danName" value="達人" maxlength="6" placeholder="段位名を入力">
     </div>
     
     <div class="canvas-container">
-        <!-- 横長の綺麗な比率（横500px、縦160px）でキャンバスを作成 -->
         <canvas id="plateCanvas" width="500" height="160"></canvas>
     </div>
     
     <button id="downloadBtn">画像を保存する (.png)</button>
-    <p class="note">※画像が読み込めない場合は、ファイル名（大文字小文字など）が正しいかGitHubを確認してください。</p>
 </div>
 
 <script>
@@ -124,12 +120,12 @@
     const plateTypeSelect = document.getElementById('plateType');
     const downloadBtn = document.getElementById('downloadBtn');
 
-    // 素材画像の読み込み
+    // すべて同じ階層にある前提のシンプルなパス
     const imgFrame = new Image();
-    imgFrame.src = 'Taiko Plate/dani_Slice_3_.png'; // 縦長の外枠画像
+    imgFrame.src = 'dani_Slice_3_.png'; 
 
     const imgSprites = new Image();
-    imgSprites.src = 'Taiko Plate/段位プレート.png'; // 木の板が入っているまとめ画像
+    imgSprites.src = '段位プレート.png'; 
 
     let isFrameLoaded = false;
     let isSpritesLoaded = false;
@@ -145,15 +141,14 @@
         }
     }
 
-    // スプライト画像（段位プレート.png）から各木目の「切り抜き座標」を定義
-    // ※送っていただいた画像の並び（左側2列の木目）を基準に大体の位置を設定しています。
+    // スプライト画像（段位プレート.png）からの切り抜き位置（仮調整版）
     const spritePositions = {
-        wood_orange: { x: 15,  y: 35,  w: 120, h: 250 }, // 左上：薄茶色
-        wood_blue:   { x: 15,  y: 300, w: 120, h: 250 }, // 左中：青色
-        wood_red:    { x: 15,  y: 570, w: 120, h: 250 }, // 左下：赤色
-        wood_silver: { x: 160, y: 35,  w: 120, h: 250 }, // 右上：銀色
-        wood_gold:   { x: 160, y: 300, w: 120, h: 250 }, // 右中：金色
-        wood_white:  { x: 160, y: 570, w: 120, h: 250 }  // 右下：白色
+        wood_orange: { x: 15,  y: 35,  w: 120, h: 250 }, 
+        wood_blue:   { x: 15,  y: 300, w: 120, h: 250 }, 
+        wood_red:    { x: 15,  y: 570, w: 120, h: 250 }, 
+        wood_silver: { x: 160, y: 35,  w: 120, h: 250 }, 
+        wood_gold:   { x: 160, y: 300, w: 120, h: 250 }, 
+        wood_white:  { x: 160, y: 570, w: 120, h: 250 }  
     };
 
     function drawPlate() {
@@ -162,33 +157,26 @@
         
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // --- 1. 背景の木目を切り抜いて、横向きにして描画 ---
         const pos = spritePositions[selectedType];
         ctx.save();
-        // キャンバスの中央を基準に90度回転させて、縦長素材を横長として敷き詰める
         ctx.translate(canvas.width / 2, canvas.height / 2);
-        ctx.rotate(-90 * Math.PI / 180); // 左に90度回転
-        // 回転した状態で、枠の内側に収まるサイズ（横140、縦480）で木目を描画
+        ctx.rotate(-90 * Math.PI / 180); 
         ctx.drawImage(imgSprites, pos.x, pos.y, pos.w, pos.h, -canvas.height/2 + 10, -canvas.width/2 + 10, canvas.height - 20, canvas.width - 20);
         ctx.restore();
 
-        // --- 2. 縦長の外枠（dani_Slice_3_.png）を横向きにして描画 ---
         ctx.save();
         ctx.translate(canvas.width / 2, canvas.height / 2);
-        ctx.rotate(-90 * Math.PI / 180); // 左に90度回転
-        // キャンバスのサイズに合わせて外枠を引き伸ばして描画
+        ctx.rotate(-90 * Math.PI / 180); 
         ctx.drawImage(imgFrame, -canvas.height / 2, -canvas.width / 2, canvas.height, canvas.width);
         ctx.restore();
 
-        // --- 3. 文字の描画設定 ---
         ctx.font = "italic bold 65px 'TaikoFont', sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
 
         const x = canvas.width / 2;
-        const y = canvas.height / 2 + 6; // 上下バランスの微調整
+        const y = canvas.height / 2 + 6; 
 
-        // 縁取り（黒 → 白 → 黒 の三層フチ）
         ctx.lineJoin = 'round';
         
         ctx.strokeStyle = '#000000';
@@ -203,18 +191,14 @@
         ctx.lineWidth = 4;
         ctx.strokeText(text, x, y);
 
-        // 文字本体のグラデーション（選択された段位に応じて文字色を変えるとさらに本家っぽくなります）
         let textGrad = ctx.createLinearGradient(0, y - 30, 0, y + 30);
         if (selectedType === 'wood_gold') {
-            // 達人用の赤〜オレンジグラデ
             textGrad.addColorStop(0, '#ff2a2a');
             textGrad.addColorStop(1, '#ff9f00');
         } else if (selectedType === 'wood_silver') {
-            // 玄人〜超人用の紫グラデなど
             textGrad.addColorStop(0, '#d12eff');
             textGrad.addColorStop(1, '#6300b3');
         } else {
-            // デフォルトの黒または赤
             textGrad.addColorStop(0, '#ffffff');
             textGrad.addColorStop(1, '#dddddd');
         }
@@ -223,11 +207,9 @@
         ctx.fillText(text, x, y);
     }
 
-    // イベントリスナー（操作されたら即座に再描画）
     danInput.addEventListener('input', drawPlate);
     plateTypeSelect.addEventListener('change', drawPlate);
 
-    // 画像保存機能
     downloadBtn.addEventListener('click', () => {
         const link = document.createElement('a');
         link.download = `${danInput.value || '段位'}_plate.png`;
