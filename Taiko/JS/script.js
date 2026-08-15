@@ -18,7 +18,6 @@ let imgText = new Image();
 imgBg.onload = onAssetLoad;
 imgText.onload = onAssetLoad;
 
-// 【修正：開いた瞬間は一切余計なことをせず、そのままの比率でロードします】
 loadAssets();
 
 function onAssetLoad() {
@@ -31,7 +30,6 @@ function loadAssets() {
 }
 
 function drawPlate() {
-    // 【再発防止】安全に等倍を維持するベース処理はそのまま残します
     if (imgBg.complete && imgBg.naturalWidth !== 0) {
         canvas.width = imgBg.naturalWidth;
         canvas.height = imgBg.naturalHeight;
@@ -42,12 +40,10 @@ function drawPlate() {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // 1. 背景の木目板を描画（等倍・無変形）
     if (imgBg.complete && imgBg.naturalWidth !== 0) {
         ctx.drawImage(imgBg, 0, 0, canvas.width, canvas.height);
     }
     
-    // スライダーの値を取得（初期状態ではHTMLの設定通り100% / 0 / 0が適用されます）
     const sMultiplier = parseFloat(sizeSlider.value) / 100;
     const offsetX = parseInt(xSlider.value);
     const offsetY = parseInt(ySlider.value);
@@ -56,12 +52,18 @@ function drawPlate() {
     xValue.textContent = (offsetX >= 0 ? "+" : "") + offsetX;
     yValue.textContent = (offsetY >= 0 ? "+" : "") + offsetY;
 
-    // 2. 【バグ完全修正】エラーの原因だった「textMode」の判定を削除。
-    // 開いた瞬間（100%/0/0）は元画像サイズそのままで重なり、
-    // ユーザーが手動でバーを動かした時だけ、その数字に合わせてリアルタイムに縮小・移動します。
     if (imgText.complete && imgText.naturalWidth !== 0) {
-        const w = canvas.width * sMultiplier;
-        const h = canvas.height * sMultiplier;
+        // 基本のサイズ計算
+        let w = canvas.width * sMultiplier;
+        let h = canvas.height * sMultiplier;
+
+        // 【大バグ解決：パーツごとの個別比率補正】
+        // 選択されている文字パーツ（ファイル名）をチェックします。
+        // もし「達人（TATSUJIN.png）」以外が選ばれている場合は、
+        // 元画像が横長になってしまっている分を打ち消すため、横幅（w）だけを「0.85倍」にキュッと縮めます。
+        if (!presetSelect.value.includes('TATSUJIN.png')) {
+            w = w * 0.85; // 玄人、超人、名人、外伝、創作の横太りを自動で補正
+        }
         
         const x = ((canvas.width - w) / 2) + offsetX;
         const y = ((canvas.height - h) / 2) + offsetY; 
@@ -69,11 +71,9 @@ function drawPlate() {
         ctx.drawImage(imgText, x, y, w, h);
     }
     
-    // 生成結果を長押し用画像タグへ反映
     plateView.src = canvas.toDataURL('image/png');
 }
 
-// イベントリスナーの登録
 bgSelect.addEventListener('change', loadAssets);
 presetSelect.addEventListener('change', loadAssets);
 
