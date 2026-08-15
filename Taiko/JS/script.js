@@ -36,19 +36,9 @@ function updateModeVisibility() {
     if (mode === 'preset') {
         presetGroup.style.display = 'block';
         customGroup.style.display = 'none';
-        
-        // 【新機能】公式パーツモードの時は、あなたが発見した黄金比をスライダーの初期値として自動セットします
-        sizeSlider.value = 82;
-        xSlider.value = -5;
-        ySlider.value = -40;
     } else {
         presetGroup.style.display = 'none';
         customGroup.style.display = 'block';
-        
-        // 自由入力モードの時は、文字がはみ出さないように100%を基準にします
-        sizeSlider.value = 100;
-        xSlider.value = 0;
-        ySlider.value = 0;
     }
     loadAssets();
 }
@@ -91,7 +81,7 @@ function drawPlate() {
     yValue.textContent = (offsetY >= 0 ? "+" : "") + offsetY;
 
     if (mode === 'preset') {
-        // 2-A. 公式文字パーツ描画（等倍・無変形・黄金比スライダー連動）
+        // 2-A. 公式文字パーツ描画（等倍・無変形・スライダー連動）
         if (imgText.complete && imgText.naturalWidth !== 0) {
             const w = canvas.width * sMultiplier;
             const h = canvas.height * sMultiplier;
