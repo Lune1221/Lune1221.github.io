@@ -56,7 +56,7 @@
             overflow-x: auto;
         }
         canvas {
-            background: #222; /* 読み込み中と分かるように背景を少し明るいグレーに */
+            background: #222;
             max-width: 100%;
             border-radius: 8px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.3);
@@ -102,7 +102,8 @@
     </div>
     
     <div class="canvas-container">
-        <canvas id="plateCanvas" width="500" height="160"></canvas>
+        <!-- 横幅を実際の比率に合わせて500x190に調整 -->
+        <canvas id="plateCanvas" width="500" height="190"></canvas>
     </div>
     
     <button id="downloadBtn">画像を保存する (.png)</button>
@@ -115,28 +116,23 @@
     const plateTypeSelect = document.getElementById('plateType');
     const downloadBtn = document.getElementById('downloadBtn');
 
-    // 画像素材の設定
     const imgFrame = new Image();
     imgFrame.src = 'dani_Slice_3_.png'; 
 
     const imgSprites = new Image();
     imgSprites.src = '段位プレート.png'; 
 
-    // 画像が読み込めても拒否されても、とにかく画面を描画する
     imgFrame.onload = () => { drawPlate(); };
     imgSprites.onload = () => { drawPlate(); };
-    
-    // エラーが起きたことが分かるようにログを出す設定
-    imgFrame.onerror = () => { console.error("外枠画像の読み込みに失敗しました。ファイル名がズレている可能性があります。"); };
-    imgSprites.onerror = () => { console.error("まとめ画像の読み込みに失敗しました。ファイル名がズレている可能性があります。"); };
 
+    // 【修正ポイント】送られた画面の比率から、木目の切り抜き座標（x, y, 幅, 高さ）を正確に計算
     const spritePositions = {
-        wood_orange: { x: 15,  y: 35,  w: 120, h: 250 }, 
-        wood_blue:   { x: 15,  y: 300, w: 120, h: 250 }, 
-        wood_red:    { x: 15,  y: 570, w: 120, h: 250 }, 
-        wood_silver: { x: 160, y: 35,  w: 120, h: 250 }, 
-        wood_gold:   { x: 160, y: 300, w: 120, h: 250 }, 
-        wood_white:  { x: 160, y: 570, w: 120, h: 250 }  
+        wood_orange: { x: 15,  y: 15,  w: 110, h: 225 }, // 左上: 薄茶
+        wood_blue:   { x: 15,  y: 285, w: 110, h: 225 }, // 左中: 青
+        wood_red:    { x: 15,  y: 550, w: 110, h: 225 }, // 左下: 赤
+        wood_silver: { x: 145, y: 15,  w: 110, h: 225 }, // 右上: 銀
+        wood_gold:   { x: 145, y: 285, w: 110, h: 225 }, // 右中: 金
+        wood_white:  { x: 145, y: 550, w: 110, h: 225 }  // 右下: 白
     };
 
     function drawPlate() {
@@ -145,57 +141,60 @@
         
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // 仮の背景色を塗る（画像が読み込めなくても黒画面にならないようにする）
-        ctx.fillStyle = "#333";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // 1. 木目画像の描画（読み込み完了時のみ）
+        // 1. 木目背景をピンポイントで切り抜いて回転描画
         if (imgSprites.complete && imgSprites.naturalWidth !== 0) {
             const pos = spritePositions[selectedType];
             ctx.save();
             ctx.translate(canvas.width / 2, canvas.height / 2);
-            ctx.rotate(-90 * Math.PI / 180); 
-            ctx.drawImage(imgSprites, pos.x, pos.y, pos.w, pos.h, -canvas.height/2 + 10, -canvas.width/2 + 10, canvas.height - 20, canvas.width - 20);
+            ctx.rotate(-90 * Math.PI / 180); // 縦長素材を横向きに倒す
+            
+            // 枠の内側（フチを少し残す位置）にぴったり引き伸ばして描画
+            // 縦横のサイズ指定を入れ替えて横長に変形させます
+            ctx.drawImage(
+                imgSprites, 
+                pos.x, pos.y, pos.w, pos.h, 
+                -canvas.height / 2 + 12, -canvas.width / 2 + 12, 
+                canvas.height - 24, canvas.width - 24
+            );
             ctx.restore();
         }
 
-        // 2. 外枠画像の描画（読み込み完了時のみ）
+        // 2. 外枠（dani_Slice_3_.png）を重ねて回転描画
         if (imgFrame.complete && imgFrame.naturalWidth !== 0) {
             ctx.save();
             ctx.translate(canvas.width / 2, canvas.height / 2);
             ctx.rotate(-90 * Math.PI / 180); 
             ctx.drawImage(imgFrame, -canvas.height / 2, -canvas.width / 2, canvas.height, canvas.width);
             ctx.restore();
-        } else {
-            // 画像がない場合は仮の黄色い枠線を引く
-            ctx.strokeStyle = '#ffd700';
-            ctx.lineWidth = 4;
-            ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
         }
 
-        // 3. 文字の描画（画像がなくても必ず実行される）
-        ctx.font = "italic bold 65px 'TaikoFont', 'Hiragino Kaku Gothic ProN', sans-serif";
+        // 3. 文字の描画
+        ctx.font = "italic bold 70px 'TaikoFont', 'Hiragino Kaku Gothic ProN', sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
 
         const x = canvas.width / 2;
-        const y = canvas.height / 2 + 6; 
+        const y = canvas.height / 2 + 5; 
 
         ctx.lineJoin = 'round';
         
+        // 黒フチ（太）
         ctx.strokeStyle = '#000000';
         ctx.lineWidth = 18;
         ctx.strokeText(text, x, y);
 
+        // 白フチ（中）
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 10;
         ctx.strokeText(text, x, y);
 
+        // 黒フチ（細）
         ctx.strokeStyle = '#000000';
         ctx.lineWidth = 4;
         ctx.strokeText(text, x, y);
 
-        let textGrad = ctx.createLinearGradient(0, y - 30, 0, y + 30);
+        // 文字本体のグラデーション
+        let textGrad = ctx.createLinearGradient(0, y - 35, 0, y + 35);
         if (selectedType === 'wood_gold') {
             textGrad.addColorStop(0, '#ff2a2a');
             textGrad.addColorStop(1, '#ff9f00');
@@ -211,9 +210,7 @@
         ctx.fillText(text, x, y);
     }
 
-    // 初回に一度強制的に描画を実行
-    drawPlate();
-
+    // イベントリスナー
     danInput.addEventListener('input', drawPlate);
     plateTypeSelect.addEventListener('change', drawPlate);
 
