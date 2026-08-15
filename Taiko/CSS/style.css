@@ -1,0 +1,106 @@
+@font-face {
+    font-family: 'TaikoFont';
+    src: url('../../FOT-大江戸勘亭流 Std E.otf') format('opentype');
+}
+body {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    text-align: center;
+    background: #1a1a2e;
+    color: #fff;
+    margin: 0;
+    padding: 20px;
+}
+.container {
+    max-width: 500px;
+    margin: 0 auto;
+    background: #161623;
+    padding: 25px;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    border: 1px solid #2e2e4f;
+}
+.control-group {
+    margin-bottom: 15px;
+    text-align: left;
+}
+label {
+    display: block;
+    font-size: 14px;
+    color: #8a8a9e;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+select, input[type="text"], input[type="color"] {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    border-radius: 8px;
+    border: 2px solid #4e4e7d;
+    background: #0f0f1a;
+    color: #fff;
+    box-sizing: border-box;
+    outline: none;
+}
+select:focus, input[type="text"]:focus {
+    border-color: #00fff0;
+}
+input[type="color"] {
+    height: 45px;
+    padding: 5px;
+    cursor: pointer;
+}
+.radio-group {
+    display: flex;
+    gap: 15px;
+    margin-top: 5px;
+}
+.slider-panel {
+    background: #202035;
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 10px;
+    border: 1px solid #3d3d66;
+}
+.slider-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+.slider-row:last-child {
+    margin-bottom: 0;
+}
+.slider-row label {
+    width: 80px;
+    margin-bottom: 0;
+}
+.slider-row input[type="range"] {
+    flex: 1;
+    margin: 0 10px;
+}
+.slider-value {
+    width: 40px;
+    text-align: right;
+    font-size: 13px;
+    color: #00fff0;
+    font-family: monospace;
+}
+.canvas-container {
+    margin: 20px 0;
+    text-align: center;
+}
+canvas {
+    display: none;
+}
+.result-image {
+    max-width: 100%;
+    max-height: 480px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+}
+.note {
+    color: #ff4757;
+    font-size: 13px;
+    font-weight: bold;
+    margin-top: 10px;
+}
