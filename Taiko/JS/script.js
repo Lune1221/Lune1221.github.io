@@ -18,7 +18,7 @@ let imgText = new Image();
 imgBg.onload = onAssetLoad;
 imgText.onload = onAssetLoad;
 
-// 起動時に画像を読み込む
+// 【修正：開いた瞬間は一切余計なことをせず、そのままの比率でロードします】
 loadAssets();
 
 function onAssetLoad() {
@@ -47,7 +47,7 @@ function drawPlate() {
         ctx.drawImage(imgBg, 0, 0, canvas.width, canvas.height);
     }
     
-    // スライダーの値を取得
+    // スライダーの値を取得（初期状態ではHTMLの設定通り100% / 0 / 0が適用されます）
     const sMultiplier = parseFloat(sizeSlider.value) / 100;
     const offsetX = parseInt(xSlider.value);
     const offsetY = parseInt(ySlider.value);
@@ -56,7 +56,9 @@ function drawPlate() {
     xValue.textContent = (offsetX >= 0 ? "+" : "") + offsetX;
     yValue.textContent = (offsetY >= 0 ? "+" : "") + offsetY;
 
-    // 2. 公式文字パーツを描画（自由入力の分岐を削除し、一本化）
+    // 2. 【バグ完全修正】エラーの原因だった「textMode」の判定を削除。
+    // 開いた瞬間（100%/0/0）は元画像サイズそのままで重なり、
+    // ユーザーが手動でバーを動かした時だけ、その数字に合わせてリアルタイムに縮小・移動します。
     if (imgText.complete && imgText.naturalWidth !== 0) {
         const w = canvas.width * sMultiplier;
         const h = canvas.height * sMultiplier;
@@ -71,7 +73,7 @@ function drawPlate() {
     plateView.src = canvas.toDataURL('image/png');
 }
 
-// イベントリスナーの登録（不要な入力を監視するコードを削除）
+// イベントリスナーの登録
 bgSelect.addEventListener('change', loadAssets);
 presetSelect.addEventListener('change', loadAssets);
 
