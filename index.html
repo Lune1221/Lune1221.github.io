@@ -2,253 +2,453 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ogg to WAV 変換ツール</title>
-    <!-- ZIP処理用のライブラリ -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>あつ森 美術品チェックリスト</title>
     <style>
+        :root {
+            --main-color: #5fb48b;
+            --bg-color: #fdfaf0;
+            --card-bg: #ffffff;
+            --text-color: #4a4a4a;
+            --hint-bg: #fff9e6;
+            --hint-text: #555555;
+            --sidebar-bg: #ffffff;
+            --img-size: 100%;
+        }
+        body.dark-mode {
+            --bg-color: #1a1a1a;
+            --card-bg: #2d2d2d;
+            --text-color: #e0e0e0;
+            --hint-bg: #3d3a30;
+            --hint-text: #cccccc;
+            --sidebar-bg: #252525;
+        }
+
+        * { transition: background-color 0.3s ease, color 0.3s ease; box-sizing: border-box; }
+        
+        html, body {
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            margin: 0; padding: 0;
+            touch-action: none;
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background-color: #f4f7f6;
-            color: #333;
-            max-width: 800px;
-            margin: 40px auto;
-            padding: 20px;
+            display: grid;
+            grid-template-areas: "nav" "main" "footer";
+            grid-template-rows: auto 1fr auto;
+            background-color: var(--bg-color); color: var(--text-color);
+            font-family: sans-serif;
         }
-        .container {
-            background: #fff;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            text-align: center;
+
+        .reveal {
+            opacity: 0;
+            transform: translateX(30px);
+            transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
         }
-        h1 {
-            font-size: 24px;
-            margin-bottom: 10px;
-            color: #2c3e50;
+        .reveal.active {
+            opacity: 1;
+            transform: translateX(0);
         }
-        p {
-            color: #7f8c8d;
-            margin-bottom: 25px;
+
+        nav { grid-area: nav; background: var(--sidebar-bg); border-bottom: 2px solid var(--main-color); z-index: 100; }
+        .tabs-row { display: flex; width: 100%; }
+        .tab { flex: 1; padding: 14px; border: none; background: none; font-weight: bold; cursor: pointer; color: var(--text-color); border-bottom: 4px solid transparent; font-size: 0.95rem; }
+        .tab.active { border-bottom-color: var(--main-color); color: var(--main-color); background: rgba(95, 180, 139, 0.05); }
+
+        .size-ctrl-box { padding: 8px 16px; border-top: 1px solid rgba(0,0,0,0.05); background: rgba(0,0,0,0.01); }
+        .size-ctrl-header { display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; font-weight: bold; cursor: pointer; padding: 4px 0; user-select: none; }
+        #size-slider-wrapper { height: 0; overflow: hidden; transition: height 0.3s ease; }
+        #size-slider-wrapper.open { height: 40px; }
+
+        main { 
+            grid-area: main; padding: 20px; 
+            overflow-y: auto; 
+            overflow-x: hidden; 
+            width: 100%; justify-self: center;
+            -webkit-overflow-scrolling: touch;
+            touch-action: pan-y;
         }
-        .drop-zone {
-            border: 2px dashed #bdc3c7;
-            padding: 30px 20px;
-            border-radius: 8px;
+        
+        .progress-card { background: var(--card-bg); padding: 15px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .bar-container { width: 100%; padding-right: 5px; box-sizing: border-box; }
+        .bar-bg { width: 100%; height: 10px; background: #eee; border-radius: 5px; overflow: hidden; margin: 8px 0; }
+        .bar-fill { height: 100%; background: var(--main-color); width: 0%; transition: width 0.8s ease; }
+
+        .item { 
+            background: var(--card-bg); 
+            margin-bottom: 20px; 
+            padding: 20px; 
+            border-radius: 12px; 
+            border-left: 6px solid var(--main-color); 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06); 
             cursor: pointer;
-            transition: background 0.2s, border-color 0.2s;
-            margin-bottom: 20px;
+            user-select: none;
+            position: relative;
         }
-        .drop-zone:hover {
-            background: #f9fbfc;
-            border-color: #3498db;
+        
+        .item-name-box { display: flex; align-items: center; pointer-events: none; }
+        input[type="checkbox"] {
+            width: 35px; height: 35px;
+            cursor: pointer; pointer-events: auto; flex-shrink: 0;
         }
-        input[type="file"] {
-            display: none;
+
+        .item-name-box label { font-weight: bold; margin-left: 15px; font-size: 1.2rem; }
+        .hint { margin-top: 15px; font-size: 1rem; background: var(--hint-bg); color: var(--hint-text); padding: 15px; border-radius: 8px; line-height: 1.5; }
+        .img-container { text-align: center; margin-top: 10px; padding: 5px; min-height: 50px; }
+        .comparison-img { width: var(--img-size); max-width: 100%; border-radius: 8px; border: 1px solid #ddd; background: #eee; cursor: zoom-in; display: block; margin: 0 auto; }
+        
+        .btn { 
+            width: 60px; height: 60px; min-width: 60px; min-height: 60px;
+            border: none; border-radius: 50%; 
+            background: var(--main-color); color: white; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; font-size: 1.6rem;
+            flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), background-color 0.3s;
+            -webkit-tap-highlight-color: transparent;
         }
-        .btn {
-            background-color: #3498db;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 6px;
-            font-size: 15px;
-            cursor: pointer;
-            transition: background 0.2s;
-            display: inline-block;
-            text-decoration: none;
-            margin: 5px;
-        }
-        .btn:hover {
-            background-color: #2980b9;
-        }
-        .btn-success {
-            background-color: #2ecc71;
-        }
-        .btn-success:hover {
-            background-color: #27ae60;
-        }
-        .btn-sm {
-            padding: 6px 12px;
-            font-size: 13px;
-        }
-        #status {
-            margin-top: 15px;
-            font-weight: bold;
-            color: #e67e22;
-        }
-        .progress-container {
-            width: 100%;
-            background-color: #e0e0e0;
-            border-radius: 6px;
-            margin-top: 15px;
-            overflow: hidden;
-            display: none;
-        }
-        .progress-bar {
-            width: 0%;
-            height: 18px;
-            background-color: #3498db;
-            text-align: center;
-            color: white;
-            font-size: 12px;
-            line-height: 18px;
-            transition: width 0.1s ease;
-        }
-        /* 検索・並び替え・一括操作エリア */
-        .toolbar {
-            display: none;
-            background: #f1f4f6;
-            padding: 12px;
-            border-radius: 6px;
-            margin-top: 15px;
-            text-align: left;
-            gap: 12px;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: space-between;
-        }
-        .toolbar input[type="text"], .toolbar select {
-            padding: 6px 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-        .batch-volume-area {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            width: 100%;
-            margin-top: 5px;
-            padding-top: 8px;
-            border-top: 1px solid #e0e0e0;
-        }
-        .volume-input-number {
-            width: 70px;
-            padding: 4px;
-            text-align: right;
-        }
-        .file-list {
-            text-align: left;
-            margin-top: 15px;
-            max-height: 380px;
-            overflow-y: auto;
-            border: 1px solid #e0e0e0;
-            border-radius: 6px;
-            padding: 10px;
-            background: #fafafa;
-        }
-        .file-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px;
-            border-bottom: 1px solid #eee;
-            font-size: 14px;
-            background: #fff;
-            margin-bottom: 6px;
-            border-radius: 4px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-        }
-        .file-item:last-child {
-            margin-bottom: 0;
-        }
-        .file-info {
-            flex-grow: 1;
-            margin-right: 15px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        .file-controls {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-shrink: 0;
-        }
-        .volume-slider {
-            width: 70px;
-        }
-        .actions {
-            margin-top: 20px;
-        }
-        .modal {
-            display: none;
+        .btn:active { transform: scale(1.2); }
+
+        #back-to-top {
             position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5);
-            justify-content: center;
-            align-items: center;
+            right: 25px; 
+            bottom: 100px;
+            z-index: 1500;
+            opacity: 0; visibility: hidden;
+            transform: translateY(10px);
+            transition: opacity 0.3s, visibility 0.3s, transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
-        .modal-content {
-            background: #fff;
-            padding: 25px;
-            border-radius: 8px;
-            width: 320px;
-            text-align: center;
+        #back-to-top.show { opacity: 1; visibility: visible; transform: translateY(0); }
+
+        #img-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 3000;
+            display: none; align-items: center; justify-content: center;
+            cursor: zoom-out; opacity: 0; transition: opacity 0.3s ease;
         }
-        .modal-content input {
-            width: 80%;
-            padding: 8px;
-            margin: 15px 0;
-            border: 1px solid #ccc;
-            border-radius: 4px;
+        #img-modal.active { display: flex; opacity: 1; }
+        #modal-img { max-width: 95%; max-height: 95%; border-radius: 10px; box-shadow: 0 0 25px rgba(0,0,0,0.5); transform: scale(0.85); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        #img-modal.active #modal-img { transform: scale(1); }
+
+        footer { 
+            grid-area: footer; background: var(--sidebar-bg); padding: 15px; 
+            display: flex; gap: 15px; border-top: 1px solid rgba(0,0,0,0.1); 
+            justify-content: space-around; z-index: 1000;
         }
+
+        @media (min-width: 768px) {
+            body { grid-template-areas: "nav main"; grid-template-columns: 240px 1fr; grid-template-rows: 1fr; }
+            nav { border-bottom: none; border-right: 3px solid var(--main-color); height: 100vh; }
+            .tabs-row { flex-direction: column; padding-top: 20px; }
+            .tab { padding: 18px; font-size: 1rem; }
+            
+            .size-ctrl-box { background: none; border-top: 1px solid rgba(0,0,0,0.05); margin-top: 20px; padding: 15px; }
+            #size-slider-wrapper { height: auto !important; overflow: visible; }
+            .size-ctrl-header { cursor: default; font-size: 0.85rem; }
+            .size-ctrl-header span:last-child { display: none; }
+
+            footer { position: fixed; bottom: 30px; right: 30px; flex-direction: column; background: transparent; border: none; width: auto; gap: 20px; padding: 0; }
+            #back-to-top { position: relative; right: 0; bottom: 0; margin-bottom: 5px; }
+        }
+        .content { display: none; }
+        .content.active { display: block; }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>Ogg to WAV 変換ツール</h1>
-        <p>一括変換・音量指定（%）・ファイル検索・名前順ソート対応</p>
-
-        <div class="drop-zone" id="dropZone">
-            <p>ここにOggファイル、またはZIPファイルをドロップ<br>または</p>
-            <label class="btn" for="fileInput">ファイルを選ぶ</label>
-            <input type="file" id="fileInput" multiple accept=".ogg,audio/ogg,.zip">
+<nav>
+    <div class="tabs-row">
+        <button class="tab active" id="btn-paintings" onclick="showTab('paintings')">🖼️ 名画</button>
+        <button class="tab" id="btn-statues" onclick="showTab('statues')">🗿 彫刻</button>
+    </div>
+    <div class="size-ctrl-box">
+        <div class="size-ctrl-header" onclick="toggleSizeSlider()">
+            <span>🖼️ 画像サイズ調整</span>
+            <span id="size-arrow">▼</span>
         </div>
+        <div id="size-slider-wrapper">
+            <input type="range" id="size-slider" min="20" max="100" value="100" oninput="changeImgSize(this.value)" style="width:100%; margin-top:10px;">
+        </div>
+    </div>
+</nav>
 
-        <div id="status"></div>
+<main id="main-scroll">
+    <div class="progress-card">
+        <div style="display: flex; justify-content: space-between; font-size: 0.85em; font-weight: bold;">
+            <span>🖼️ 名画 進捗</span><span id="txt-p">0% (0/30)</span>
+        </div>
+        <div class="bar-container"><div class="bar-bg"><div id="bar-p" class="bar-fill"></div></div></div>
         
-        <div class="progress-container" id="progressContainer">
-            <div class="progress-bar" id="progressBar">0%</div>
+        <div style="display: flex; justify-content: space-between; font-size: 0.85em; font-weight: bold; margin-top:10px;">
+            <span>🗿 彫刻 進捗</span><span id="txt-s">0% (0/13)</span>
         </div>
-
-        <!-- ツールバー（検索・並び替え・一括音量） -->
-        <div class="toolbar" id="toolbar">
-            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; width: 100%;">
-                <input type="text" id="searchInput" placeholder="🔍 ファイル名で検索..." style="flex-grow: 1;">
-                <select id="sortSelect">
-                    <option value="name-asc">名前順 (昇順 A→Z)</option>
-                    <option value="name-desc">名前順 (降順 Z→A)</option>
-                </select>
-            </div>
-            <div class="batch-volume-area">
-                <label for="batchVolumeSlider">🔊 一括音量:</label>
-                <input type="range" id="batchVolumeSlider" min="0" max="10" step="0.05" value="1" style="flex-grow: 1;">
-                <input type="number" id="batchVolumeNumber" class="volume-input-number" min="0" max="1000" value="100"> %
-            </div>
-        </div>
-
-        <div class="file-list" id="fileList" style="display: none;"></div>
-
-        <div class="actions" id="actionArea" style="display: none;">
-            <button class="btn btn-success" id="downloadAllBtn">すべて個別にダウンロード</button>
-            <button class="btn" id="downloadZipBtn">ZIPにまとめてダウンロード</button>
-        </div>
+        <div class="bar-container"><div class="bar-bg"><div id="bar-s" class="bar-fill"></div></div></div>
     </div>
+    <div id="paintings" class="content active"></div>
+    <div id="statues" class="content"></div>
+</main>
 
-    <!-- パスワード入力モーダル -->
-    <div class="modal" id="passwordModal">
-        <div class="modal-content">
-            <h3>ZIPのパスワードが必要です</h3>
-            <p id="modalFileName" style="font-size: 13px; margin: 5px 0 15px 0;"></p>
-            <input type="password" id="zipPasswordInput" placeholder="パスワードを入力">
-            <br>
-            <button class="btn" id="submitPasswordBtn">決定</button>
-        </div>
-    </div>
+<div id="img-modal" onclick="closeModal()">
+    <img id="modal-img" src="" alt="拡大画像">
+</div>
 
-    <script src="OggtoWav/script.js"></script>
+<button id="back-to-top" class="btn" onclick="scrollToTop()">▲</button>
+
+<footer>
+    <button class="btn" onclick="exportJSON()">💾</button>
+    <button class="btn" onclick="document.getElementById('importFile').click()">📂</button>
+    <button class="btn" style="background:#666;" onclick="toggleDarkMode()">🌓</button>
+    <input type="file" id="importFile" style="display:none" onchange="importJSON(event)" accept=".json">
+</footer>
+
+<script>
+// GitHubのBaseパス
+const GITHUB_RAW_BASE = "https://raw.githubusercontent.com/Lune1221/Lune1221.github.io/refs/heads/main/Atsumori/";
+
+const data = {
+    paintings: [
+        {name: "アカデミックなめいが", hint: "右上にシミがあるのが偽物"},
+        {name: "あらぶるめいがのひだり", hint: "色が緑なのが偽物"},
+        {name: "あらぶるめいがのみぎ", hint: "色が白なのが偽物"},
+        {name: "いいめいが", hint: "本物のみ"},
+        {name: "いきなめいが", hint: "本物のみ"},
+        {name: "いさましいめいが", hint: "前髪の量が多いのが偽物"},
+        {name: "おちついためいが", hint: "牛乳の量が多いのが偽物"},
+        {name: "おもしろいめいが", hint: "胸元に花がないのが偽物"},
+        {name: "しずみゆくめいが", hint: "本物のみ"},
+        {name: "しなやかなめいが", hint: "人物が左を向いている、または巨大なのが偽物"},
+        {name: "すごいめいが", hint: "中央の人物が帽子を被っていないのが偽物"},
+        {name: "すてきなめいが", hint: "耳飾りが星型になっている、または目を閉じているのが偽物"},
+        {name: "すばらしいめいが", hint: "本物のみ"},
+        {name: "ちからづよいめいが", hint: "本物のみ"},
+        {name: "ちみつなめいが", hint: "花の色が紫色、または左中央の朱印がないのが偽物"},
+        {name: "ひかりのめいが", hint: "本物のみ"},
+        {name: "またたくめいが", hint: "本物のみ"},
+        {name: "たおやかなめいが", hint: "動物の色がグレーなのが偽物"},
+        {name: "よくみるめいが", hint: "本物のみ"},
+        {name: "みごとなめいが", hint: "木の間に人がいないのが偽物"},
+        {name: "いなせなめいが", hint: "眉が泣き顔、または口が笑っているのが偽物"},
+        {name: "なぞめいためいが", hint: "本物のみ"},
+        {name: "おだやかなめいが", hint: "本物のみ"},
+        {name: "いいかんじのめいが", hint: "本物のみ"},
+        {name: "きれいなめいが", hint: "右上に木がない"},
+        {name: "ゆうめいなめいが", hint: "眉毛がある"},
+        {name: "にぎやかなめいが", hint: "本物のみ"},
+        {name: "たぐいまれなるめいが", hint: "本物のみ"},
+        {name: "おごそかなめいが", hint: "奥の男性の手が離れている"},
+        {name: "かちのあるめいが", hint: "本物のみ"}
+    ],
+    statues: [
+        {name: "いしあたまなちょうこく", hint: "口角が上がっているのが偽物"},
+        {name: "いにしえのちょうこく", hint: "頭にアンテナのようなものがあるのが偽物"},
+        {name: "いだいなちょうこく", hint: "本物のみ"},
+        {name: "うつくしいちょうこく", hint: "首飾りがついているのが偽物"},
+        {name: "こうごうしいちょうこく", hint: "左足が前に出ているのが偽物"},
+        {name: "しんぴてきなちょうこく", hint: "耳にアクセサリーがついているのが偽物"},
+        {name: "たくましいちょうこく", hint: "腕時計をしているのが偽物"},
+        {name: "てがかりのちょうこく", hint: "色が青いのが偽物"},
+        {name: "とてつもないちょうこく", hint: "取手の蓋があるのが偽物"},
+        {name: "なじみのあるちょうこく", hint: "本物のみ"},
+        {name: "ぼせいあふれるちょうこく", hint: "舌が出ているのが偽物"},
+        {name: "もののふのちょうこく", hint: "道具を持っているのが偽物"},
+        {name: "りりしいちょうこく", hint: "本を持っているのが偽物"}
+    ]
+};
+
+const mainScroll = document.getElementById('main-scroll');
+const topBtn = document.getElementById('back-to-top');
+
+mainScroll.addEventListener('scroll', () => {
+    if (mainScroll.scrollTop > 300) {
+        topBtn.classList.add('show');
+    } else {
+        topBtn.classList.remove('show');
+    }
+});
+
+function scrollToTop() {
+    mainScroll.style.scrollBehavior = 'smooth';
+    mainScroll.scrollTo({ top: 0 });
+}
+
+function changeImgSize(val) {
+    document.documentElement.style.setProperty('--img-size', val + '%');
+    localStorage.setItem('savedImgSize', val);
+}
+
+function toggleSizeSlider() {
+    if (window.innerWidth >= 768) return;
+    const wrapper = document.getElementById('size-slider-wrapper');
+    const arrow = document.getElementById('size-arrow');
+    wrapper.classList.toggle('open');
+    arrow.style.transform = wrapper.classList.contains('open') ? 'rotate(180deg)' : 'rotate(0deg)';
+}
+
+function openModal(src) {
+    const modal = document.getElementById('img-modal');
+    const modalImg = document.getElementById('modal-img');
+    modalImg.src = src;
+    modal.classList.add('active');
+}
+function closeModal() {
+    document.getElementById('img-modal').classList.remove('active');
+}
+
+// 【拡張子自動リトライ機能】
+// オンライン上の大文字・小文字・文字コードズレに対応するため、エラーが起きたら別の拡張子や文字コードで合計4回再試行します。
+function handleImgError(imgElement, basePath, encodedNFC, encodedNFD) {
+    // 現在の試行状態を要素に記録
+    if (!imgElement.dataset.retryCount) {
+        imgElement.dataset.retryCount = "1";
+        // 1回目の失敗: 大文字の .JPEG を試す (NFC)
+        imgElement.src = `${basePath}${encodedNFC}.JPEG`;
+    } else if (imgElement.dataset.retryCount === "1") {
+        imgElement.dataset.retryCount = "2";
+        // 2回目の失敗: 短い .jpg を試す (NFC)
+        imgElement.src = `${basePath}${encodedNFC}.jpg`;
+    } else if (imgElement.dataset.retryCount === "2") {
+        imgElement.dataset.retryCount = "3";
+        // 3回目の失敗: Mac特有の分解文字コード(NFD) + .jpeg を試す
+        imgElement.src = `${basePath}${encodedNFD}.jpeg`;
+    } else if (imgElement.dataset.retryCount === "3") {
+        imgElement.dataset.retryCount = "4";
+        // 4回目の失敗: 分解文字コード(NFD) + 大文字 .JPEG を試す
+        imgElement.src = `${basePath}${encodedNFD}.JPEG`;
+    } else {
+        // すべてダメだった場合はプレースホルダーを表示
+        imgElement.src = 'https://placehold.co/400x200?text=Image+Load+Error';
+        imgElement.onerror = null; 
+    }
+}
+
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            entry.target.classList.add('active');
+        } else {
+            entry.target.classList.remove('active');
+        }
+    });
+}, { threshold: 0.1 });
+
+function createList(type, listId) {
+    const container = document.getElementById(listId);
+    const subDir = (type === 'paintings') ? 'paintings/' : 'statues/';
+    const basePath = `${GITHUB_RAW_BASE}${subDir}`;
+    
+    data[type].forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'item reveal';
+        const checkId = `check-${item.name}`;
+        const isChecked = localStorage.getItem(checkId) === 'true';
+
+        // 2つの異なる文字コードパターンを事前に用意
+        const nameNFC = item.name.normalize('NFC');
+        const nameNFD = item.name.normalize('NFD');
+        
+        const encodedNFC = encodeURIComponent(nameNFC);
+        const encodedNFD = encodeURIComponent(nameNFD);
+
+        // 最初は「NFC + .jpeg」の標準的なURLで読み込みを開始
+        const defaultImgSrc = `${basePath}${encodedNFC}.jpeg`;
+
+        div.addEventListener('click', (e) => {
+            if (e.target.tagName === 'IMG') return;
+            const cb = div.querySelector('input');
+            cb.checked = !cb.checked;
+            updateStatus(cb.id);
+        });
+
+        div.innerHTML = `
+            <div class="item-name-box">
+                <input type="checkbox" id="${checkId}" ${isChecked ? 'checked' : ''} onclick="event.stopPropagation(); updateStatus(this.id);">
+                <label>${item.name}</label>
+            </div>
+            <div class="hint">
+                <div style="margin-bottom:8px;"><b>偽物の特徴:</b> ${item.hint}</div>
+                <div class="img-container">
+                    <img src="${defaultImgSrc}" class="comparison-img" onclick="openModal(this.src)" 
+                         onerror="handleImgError(this, '${basePath}', '${encodedNFC}', '${encodedNFD}')">
+                </div>
+            </div>
+        `;
+        container.appendChild(div);
+        observer.observe(div);
+    });
+}
+
+function showTab(tabName) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.getElementById(`btn-${tabName}`).classList.add('active');
+    document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
+    document.getElementById(tabName).classList.add('active');
+    mainScroll.scrollTop = 0;
+}
+
+function updateStatus(id) {
+    const cb = document.getElementById(id);
+    if(cb) {
+        localStorage.setItem(id, cb.checked);
+        updateProgressBar();
+    }
+}
+
+function updateProgressBar() {
+    ['paintings', 'statues'].forEach(cat => {
+        const key = cat === 'paintings' ? 'p' : 's';
+        const total = data[cat].length;
+        const checked = data[cat].filter(item => localStorage.getItem(`check-${item.name}`) === 'true').length;
+        const percent = Math.round((checked / total) * 100);
+        document.getElementById(`txt-${key}`).innerText = `${percent}% (${checked}/${total})`;
+        document.getElementById(`bar-${key}`).style.width = `${percent}%`;
+    });
+}
+
+function exportJSON() {
+    const storageData = {};
+    Object.keys(localStorage).forEach(k => { if(k.startsWith('check-')) storageData[k] = localStorage.getItem(k); });
+    
+    let fileName = prompt("保存するファイル名を入力してください", "Backup");
+    if (fileName === null) return;
+    if (fileName.trim() === "") fileName = "Backup";
+
+    const blob = new Blob([JSON.stringify(storageData)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${fileName}.json`;
+    a.click();
+}
+
+function importJSON(event) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const imported = JSON.parse(e.target.result);
+        const darkMode = localStorage.getItem('darkMode');
+        const imgSize = localStorage.getItem('savedImgSize');
+        localStorage.clear();
+        if(darkMode) localStorage.setItem('darkMode', darkMode);
+        if(imgSize) localStorage.setItem('savedImgSize', imgSize);
+        Object.keys(imported).forEach(k => localStorage.setItem(k, imported[k]));
+        location.reload();
+    };
+    reader.readAsText(event.target.files[0]);
+}
+
+function toggleDarkMode() {
+    localStorage.setItem('darkMode', document.body.classList.toggle('dark-mode'));
+}
+
+createList('paintings', 'paintings');
+createList('statues', 'statues');
+updateProgressBar();
+
+if (localStorage.getItem('darkMode') === 'true') document.body.classList.add('dark-mode');
+const sv = localStorage.getItem('savedImgSize');
+if (sv) {
+    document.getElementById('size-slider').value = sv;
+    changeImgSize(sv);
+}
+</script>
 </body>
 </html>
