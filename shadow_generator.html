@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>影文字ジェネレーター</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-color: #f8fafc;
+            --accent-color: #38bdf8;
+            --border-color: #334155;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 1.8rem;
+            margin: 0 0 10px;
+            color: var(--accent-color);
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+
+        /* プレビューエリア */
+        .preview-area {
+            min-height: 180px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: repeating-conic-gradient(#1e293b 0% 25%, #151e2e 0% 50%) 50% / 20px 20px;
+            border-radius: 8px;
+            border: 1px dashed var(--border-color);
+            padding: 20px;
+            overflow: hidden;
+            text-align: center;
+        }
+
+        #previewText {
+            font-size: 3rem;
+            font-weight: bold;
+            word-break: break-all;
+            line-height: 1.2;
+            transition: color 0.1s, text-shadow 0.1s;
+        }
+
+        /* コントロールパネル */
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 15px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .control-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        label {
+            font-size: 0.85rem;
+            color: #94a3b8;
+            font-weight: 500;
+        }
+
+        input[type="text"], select {
+            background-color: #0f172a;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 1rem;
+            outline: none;
+        }
+
+        input[type="text"]:focus, select:focus {
+            border-color: var(--accent-color);
+        }
+
+        .color-picker-wrapper {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        input[type="color"] {
+            appearance: none;
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 6px;
+            cursor: pointer;
+            background: none;
+        }
+
+        input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+
+        input[type="color"]::-webkit-color-swatch {
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+        }
+
+        .range-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            accent-color: var(--accent-color);
+        }
+
+        .range-value {
+            font-size: 0.9rem;
+            min-width: 45px;
+            text-align: right;
+            color: #cbd5e1;
+        }
+
+        /* CSS出力＆コピーエリア */
+        .output-box {
+            background-color: #0f172a;
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            word-break: break-all;
+            color: #e2e8f0;
+            margin-bottom: 10px;
+        }
+
+        button.btn-primary {
+            background-color: var(--accent-color);
+            color: #0f172a;
+            border: none;
+            padding: 10px 16px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            transition: opacity 0.2s;
+        }
+
+        button.btn-primary:hover {
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>影文字ジェネレーター</h1>
+
+    <!-- プレビュー -->
+    <div class="card">
+        <label style="margin-bottom: 8px; display: block;">プレビュー</label>
+        <div class="preview-area">
+            <div id="previewText">影文字</div>
+        </div>
+    </div>
+
+    <!-- コントロール -->
+    <div class="card controls-grid">
+        <!-- 文字入力 -->
+        <div class="control-group full-width">
+            <label for="inputText">テキスト</label>
+            <input type="text" id="inputText" value="影文字">
+        </div>
+
+        <!-- フォント選択 -->
+        <div class="control-group">
+            <label for="fontFamily">フォント</label>
+            <select id="fontFamily">
+                <option value="sans-serif">サンセリフ (ゴシック体)</option>
+                <option value="serif">セリフ (明朝体)</option>
+                <option value="monospace">等幅フォント</option>
+                <option value="cursive"> cursive (筆記体風)</option>
+                <option value="Impact, sans-serif">Impact</option>
+            </select>
+        </div>
+
+        <!-- フォントサイズ -->
+        <div class="control-group">
+            <label>フォントサイズ (px)</label>
+            <div class="range-wrapper">
+                <input type="range" id="fontSize" min="16" max="100" value="48">
+                <span class="range-value" id="fontSizeVal">48px</span>
+            </div>
+        </div>
+
+        <!-- 文字色 -->
+        <div class="control-group">
+            <label>文字の色</label>
+            <div class="color-picker-wrapper">
+                <input type="color" id="textColor" value="#ffffff">
+                <input type="text" id="textColorHex" value="#ffffff" style="flex:1;">
+            </div>
+        </div>
+
+        <!-- 影の色 -->
+        <div class="control-group">
+            <label>影の色</label>
+            <div class="color-picker-wrapper">
+                <input type="color" id="shadowColor" value="#000000">
+                <input type="text" id="shadowColorHex" value="#000000" style="flex:1;">
+            </div>
+        </div>
+
+        <!-- 影の横オフセット -->
+        <div class="control-group">
+            <label>影の横位置 (X)</label>
+            <div class="range-wrapper">
+                <input type="range" id="shadowX" min="-50" max="50" value="4">
+                <span class="range-value" id="shadowXVal">4px</span>
+            </div>
+        </div>
+
+        <!-- 影の縦オフセット -->
+        <div class="control-group">
+            <label>影の縦位置 (Y)</label>
+            <div class="range-wrapper">
+                <input type="range" id="shadowY" min="-50" max="50" value="4">
+                <span class="range-value" id="shadowYVal">4px</span>
+            </div>
+        </div>
+
+        <!-- 影のぼかし -->
+        <div class="control-group">
+            <label>影のぼかし (Blur)</label>
+            <div class="range-wrapper">
+                <input type="range" id="shadowBlur" min="0" max="50" value="0">
+                <span class="range-value" id="shadowBlurVal">0px</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 出力＆コピー -->
+    <div class="card">
+        <label style="margin-bottom: 8px; display: block;">生成された CSS</label>
+        <div class="output-box" id="cssOutput"></div>
+        <button class="btn-primary" id="copyBtn">CSSをコピーする</button>
+    </div>
+</div>
+
+<script>
+    const inputText = document.getElementById('inputText');
+    const previewText = document.getElementById('previewText');
+    const fontFamily = document.getElementById('fontFamily');
+    const fontSize = document.getElementById('fontSize');
+    const fontSizeVal = document.getElementById('fontSizeVal');
+    const textColor = document.getElementById('textColor');
+    const textColorHex = document.getElementById('textColorHex');
+    const shadowColor = document.getElementById('shadowColor');
+    const shadowColorHex = document.getElementById('shadowColorHex');
+    const shadowX = document.getElementById('shadowX');
+    const shadowXVal = document.getElementById('shadowXVal');
+    const shadowY = document.getElementById('shadowY');
+    const shadowYVal = document.getElementById('shadowYVal');
+    const shadowBlur = document.getElementById('shadowBlur');
+    const shadowBlurVal = document.getElementById('shadowBlurVal');
+    const cssOutput = document.getElementById('cssOutput');
+    const copyBtn = document.getElementById('copyBtn');
+
+    function updateGenerator() {
+        const text = inputText.value || '';
+        const font = fontFamily.value;
+        const size = fontSize.value + 'px';
+        const tColor = textColor.value;
+        const sColor = shadowColor.value;
+        const x = shadowX.value + 'px';
+        const y = shadowY.value + 'px';
+        const blur = shadowBlur.value + 'px';
+
+        // 表示の更新
+        previewText.textContent = text;
+        previewText.style.fontFamily = font;
+        previewText.style.fontSize = size;
+        previewText.style.color = tColor;
+        
+        const textShadowValue = `${x} ${y} ${blur} ${sColor}`;
+        previewText.style.textShadow = textShadowValue;
+
+        // 数値ラベルの更新
+        fontSizeVal.textContent = size;
+        shadowXVal.textContent = x;
+        shadowYVal.textContent = y;
+        shadowBlurVal.textContent = blur;
+
+        // カラーコード同期
+        textColorHex.value = tColor;
+        shadowColorHex.value = sColor;
+
+        // CSS出力の作成
+        const cssCode = `color: ${tColor};
+font-family: ${font};
+font-size: ${size};
+text-shadow: ${textShadowValue};`;
+        cssOutput.textContent = cssCode;
+    }
+
+    // イベントリスナーの設定
+    [inputText, fontFamily, fontSize, textColor, shadowColor, shadowX, shadowY, shadowBlur].forEach(element => {
+        element.addEventListener('input', updateGenerator);
+    });
+
+    // カラーピッカーとテキスト入力の相互同期
+    textColorHex.addEventListener('input', (e) => {
+        if(/^#[0-9A-Fa-f]{6}$/.test(e.target.value)) {
+            textColor.value = e.target.value;
+            updateGenerator();
+        }
+    });
+
+    shadowColorHex.addEventListener('input', (e) => {
+        if(/^#[0-9A-Fa-f]{6}$/.test(e.target.value)) {
+            shadowColor.value = e.target.value;
+            updateGenerator();
+        }
+    });
+
+    // コピーボタン
+    copyBtn.addEventListener('click', () => {
+        navigator.clipboard.writeText(cssOutput.textContent).then(() => {
+            const originalText = copyBtn.textContent;
+            copyBtn.textContent = 'コピーしました！';
+            setTimeout(() => {
+                copyBtn.textContent = originalText;
+            }, 1500);
+        });
+    });
+
+    // 初期化
+    updateGenerator();
+</script>
+
+</body>
+</html>
