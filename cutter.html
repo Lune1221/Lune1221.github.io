@@ -33,10 +33,16 @@ document.getElementById('f').onchange = function(e) {
     for (let i = 0; i < 10; i++) {
       maxF.file("0" + i + ".png", await toBlob(3, i, false));
     }
-    const b = await zip.generateAsync({type:"base64"});
-    location.href = "data:application/zip;base64," + b;
-    document.getElementById('status').textContent = '完了！ダウンロードを確認してください';
-  };
+        const b = await zip.generateAsync({type:"blob"});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(b);
+    a.download = "default.zip";
+    a.textContent = "📥 ここをタップして default.zip を保存";
+    a.style = "display:inline-block;padding:12px 20px;background:#007aff;color:#fff;border-radius:8px;text-decoration:none;font-weight:bold;";
+    const st = document.getElementById('status');
+    st.textContent = "";
+    st.appendChild(a);
+
   img.src = URL.createObjectURL(file);
 };
 </script></body></html>
