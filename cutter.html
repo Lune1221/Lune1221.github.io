@@ -1,47 +1,1023 @@
 <!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ゲージZIP生成</title>
-<script src="https://unpkg.com"></script>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>画像等分スプリッター | 縦横グリッド分割・一括保存ツール</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- JSZip for ZIP archive creation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <!-- Google Fonts: Inter & Noto Sans JP -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Inter"', '"Noto Sans JP"', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
 </head>
-<body style="font-family:sans-serif;padding:20px;">
-<h3>大次郎4 リザルトゲージZIP生成ツール</h3>
-<p>normagauge.png (横10×縦4) を選択：</p>
-<input type="file" id="f" accept="image/*"><br><br>
-<div id="status"></div>
-<script>
-document.getElementById('f').onchange = function(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  document.getElementById('status').textContent = '処理中...';
-  const img = new Image();
-  img.onload = async function() {
-    const cw = Math.floor(img.width / 10);
-    const ch = Math.floor(img.height / 4);
-    const zip = new JSZip();
-    const toBlob = (row, col, blank) => new Promise(res => {
-      const c = document.createElement('canvas');
-      c.width = cw; c.height = ch;
-      if (!blank) c.getContext('2d').drawImage(img, col*cw, row*ch, cw, ch, 0, 0, cw, ch);
-      c.toBlob(res, 'image/png');
-    });
-    const f = zip.folder("default/img/result_gauge");
-    f.file("base.png", await toBlob(0, 0, false));
-    f.file("fill.png", await toBlob(1, 0, false));
-    f.file("line.png", await toBlob(0, 0, true));
-    const maxF = f.folder("max");
-    for (let i = 0; i < 10; i++) {
-      maxF.file("0" + i + ".png", await toBlob(3, i, false));
-    }    const b = await zip.generateAsync({type:"blob"});
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(b);
-    a.download = "default.zip";
-    a.textContent = "📥 ここをタップして default.zip を保存";
-    a.style = "display:inline-block;padding:12px 20px;background:#007aff;color:#fff;border-radius:8px;text-decoration:none;font-weight:bold;";
-    const st = document.getElementById('status');
-    st.textContent = "";
-    st.appendChild(a);
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col selection:bg-indigo-100 selection:text-indigo-700">
 
-  img.src = URL.createObjectURL(file);
-};
-</script></body></html>
+  <!-- Header -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-sm">
+          <!-- Grid Icon -->
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="3" y1="9" x2="21" y2="9"></line>
+            <line x1="3" y1="15" x2="21" y2="15"></line>
+            <line x1="9" y1="3" x2="9" y2="21"></line>
+            <line x1="15" y1="3" x2="15" y2="21"></line>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold tracking-tight text-slate-900">画像等分スプリッター</h1>
+          <p class="text-xs text-slate-500 hidden sm:block">ブラウザ完結・サーバー送信なしで安全に画像をグリッド分割</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button id="resetBtn" type="button" class="hidden text-sm font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3.5 py-2 rounded-xl transition cursor-pointer">
+          別の画像を選択
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Notification Banner / Toast Container -->
+  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+  <!-- Main Content -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+
+    <!-- Step 1: Upload Zone (Shown initially) -->
+    <section id="uploadSection" class="max-w-2xl mx-auto my-8 sm:my-16">
+      <div
+        id="dropZone"
+        class="bg-white border-2 border-dashed border-slate-300 hover:border-indigo-500 rounded-3xl p-8 sm:p-14 text-center transition-all cursor-pointer shadow-sm hover:shadow-md group"
+      >
+        <input id="fileInput" type="file" accept="image/*" class="hidden" />
+        <div class="w-16 h-16 mx-auto mb-5 rounded-2xl bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center transition-colors">
+          <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+          </svg>
+        </div>
+        <h2 class="text-xl font-bold text-slate-900 mb-2">画像をドラッグ＆ドロップ</h2>
+        <p class="text-sm text-slate-500 mb-6">またはクリックしてファイルを選択（PNG, JPEG, WebP, GIFなど）</p>
+        <span class="inline-flex items-center gap-2 bg-indigo-600 text-white font-medium text-sm px-6 py-3 rounded-xl shadow-sm group-hover:bg-indigo-700 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path>
+          </svg>
+          画像を選択する
+        </span>
+      </div>
+
+      <!-- Feature Highlights -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-8 text-center">
+        <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm">
+          <div class="text-indigo-600 font-semibold text-sm mb-1">縦・横を自由に等分</div>
+          <p class="text-xs text-slate-500">SNSの分割投稿やスプライトシート作成に最適</p>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm">
+          <div class="text-indigo-600 font-semibold text-sm mb-1">リアルタイムプレビュー</div>
+          <p class="text-xs text-slate-500">分割線と各タイルの解像度を即座に確認</p>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm">
+          <div class="text-indigo-600 font-semibold text-sm mb-1">フォルダ / ZIP保存</div>
+          <p class="text-xs text-slate-500">指定フォルダへの直接保存またはZIP一括出力</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Step 2: Workspace (Hidden until image is loaded) -->
+    <section id="workspaceSection" class="hidden grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+
+      <!-- Left Column: Controls & Export (4 cols on lg) -->
+      <div class="lg:col-span-4 space-y-6">
+
+        <!-- Split Settings Card -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm space-y-5">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-indigo-600"></span>
+              分割設定
+            </h2>
+            <span id="totalPiecesBadge" class="text-xs font-semibold bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-lg">
+              合計 9 枚
+            </span>
+          </div>
+
+          <!-- Presets -->
+          <div>
+            <label class="block text-xs font-medium text-slate-500 mb-2">クイックプリセット</label>
+            <div class="grid grid-cols-4 gap-2">
+              <button type="button" data-rows="2" data-cols="2" class="preset-btn py-2 px-2 text-xs font-semibold rounded-xl border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50 text-slate-700 transition cursor-pointer">2 × 2</button>
+              <button type="button" data-rows="3" data-cols="3" class="preset-btn py-2 px-2 text-xs font-semibold rounded-xl border border-indigo-500 bg-indigo-50 text-indigo-700 transition cursor-pointer">3 × 3</button>
+              <button type="button" data-rows="1" data-cols="3" class="preset-btn py-2 px-2 text-xs font-semibold rounded-xl border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50 text-slate-700 transition cursor-pointer">縦1 × 横3</button>
+              <button type="button" data-rows="4" data-cols="4" class="preset-btn py-2 px-2 text-xs font-semibold rounded-xl border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50 text-slate-700 transition cursor-pointer">4 × 4</button>
+            </div>
+          </div>
+
+          <!-- Rows (縦の分割数) -->
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label for="rowsInput" class="text-sm font-semibold text-slate-700">縦の分割数 (行)</label>
+              <div class="flex items-center gap-1.5">
+                <button type="button" id="decRowsBtn" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center transition cursor-pointer" aria-label="縦の分割数を減らす">-</button>
+                <input id="rowsInput" type="number" min="1" max="50" value="3" class="w-16 text-center text-sm font-bold border border-slate-300 rounded-lg py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                <button type="button" id="incRowsBtn" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center transition cursor-pointer" aria-label="縦の分割数を増やす">+</button>
+              </div>
+            </div>
+            <input id="rowsSlider" type="range" min="1" max="20" value="3" class="w-full accent-indigo-600 cursor-pointer" />
+          </div>
+
+          <!-- Columns (横の分割数) -->
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label for="colsInput" class="text-sm font-semibold text-slate-700">横の分割数 (列)</label>
+              <div class="flex items-center gap-1.5">
+                <button type="button" id="decColsBtn" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center transition cursor-pointer" aria-label="横の分割数を減らす">-</button>
+                <input id="colsInput" type="number" min="1" max="50" value="3" class="w-16 text-center text-sm font-bold border border-slate-300 rounded-lg py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                <button type="button" id="incColsBtn" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center transition cursor-pointer" aria-label="横の分割数を増やす">+</button>
+              </div>
+            </div>
+            <input id="colsSlider" type="range" min="1" max="20" value="3" class="w-full accent-indigo-600 cursor-pointer" />
+          </div>
+
+          <!-- Image Metadata Summary -->
+          <div class="bg-slate-50 rounded-xl p-3.5 border border-slate-200/70 text-xs space-y-1.5">
+            <div class="flex justify-between">
+              <span class="text-slate-500">元画像サイズ:</span>
+              <span id="origDimensions" class="font-semibold text-slate-800">- × - px</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-500">1枚あたりのサイズ:</span>
+              <span id="tileDimensions" class="font-semibold text-indigo-600">- × - px</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Output & Download Card -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm space-y-5">
+          <div class="border-b border-slate-100 pb-3">
+            <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+              出力・保存設定
+            </h2>
+          </div>
+
+          <!-- Output Format -->
+          <div>
+            <label for="formatSelect" class="block text-xs font-semibold text-slate-700 mb-1.5">画像フォーマット</label>
+            <select id="formatSelect" class="w-full text-sm border border-slate-300 rounded-xl px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              <option value="image/png">PNG（高画質・透過対応）</option>
+              <option value="image/jpeg">JPEG（軽量・写真向け）</option>
+              <option value="image/webp">WebP（高圧縮・Web向け）</option>
+            </select>
+          </div>
+
+          <!-- Quality Slider (Shown for JPEG / WebP) -->
+          <div id="qualityWrapper" class="hidden">
+            <div class="flex justify-between text-xs font-semibold text-slate-700 mb-1">
+              <label for="qualitySlider">画質</label>
+              <span id="qualityValue">92%</span>
+            </div>
+            <input id="qualitySlider" type="range" min="10" max="100" value="92" class="w-full accent-indigo-600 cursor-pointer" />
+          </div>
+
+          <!-- Filename Prefix -->
+          <div>
+            <label for="prefixInput" class="block text-xs font-semibold text-slate-700 mb-1.5">ファイル名の接頭辞</label>
+            <input id="prefixInput" type="text" value="split" placeholder="例: image_part" class="w-full text-sm border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            <p id="filenamePreview" class="text-[11px] text-slate-400 mt-1.5 truncate">出力例: split_01_01.png</p>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="space-y-3 pt-1">
+            <!-- Download as ZIP -->
+            <button id="downloadZipBtn" type="button" class="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold text-sm rounded-xl shadow-sm transition flex items-center justify-center gap-2 cursor-pointer">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+              </svg>
+              <span>ZIPファイルでダウンロード</span>
+            </button>
+
+            <!-- Save directly to Folder -->
+            <button id="saveFolderBtn" type="button" class="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold text-sm rounded-xl shadow-sm transition flex items-center justify-center gap-2 cursor-pointer">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+              </svg>
+              <span>フォルダを選択して直接保存</span>
+            </button>
+
+            <p id="folderSupportNote" class="text-[11px] text-slate-500 leading-relaxed">
+              ※ PC版 Chrome / Edge 等では選択したフォルダへ直接一括保存できます。非対応ブラウザでは個別ダウンロードに自動切替します。
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Live Preview & Tile List (8 cols on lg) -->
+      <div class="lg:col-span-8 space-y-6">
+
+        <!-- Live Grid Overlay Preview Card -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+            <h2 class="text-base font-bold text-slate-900">分割プレビュー（全体）</h2>
+            <div class="flex items-center gap-3">
+              <label class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 cursor-pointer select-none">
+                <input id="showNumbersToggle" type="checkbox" checked class="rounded text-indigo-600 focus:ring-indigo-500" />
+                <span>番号を表示</span>
+              </label>
+              <label class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 cursor-pointer select-none">
+                <input id="gridColorToggle" type="checkbox" class="rounded text-indigo-600 focus:ring-indigo-500" />
+                <span>白線表示</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Responsive Canvas Container -->
+          <div id="canvasContainer" class="relative w-full bg-slate-100 rounded-xl overflow-hidden flex items-center justify-center p-2 sm:p-4 border border-slate-200/80 min-h-[260px]">
+            <canvas id="previewCanvas" class="max-w-full h-auto rounded-lg shadow-sm block"></canvas>
+          </div>
+        </div>
+
+        <!-- Individual Tiles Preview Grid -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-base font-bold text-slate-900">分割後の個別タイル一覧</h2>
+              <p class="text-xs text-slate-500 mt-0.5">各画像をクリックすると単体でダウンロードできます</p>
+            </div>
+            <span id="tilePreviewNotice" class="hidden text-xs font-medium text-amber-600 bg-amber-50 px-2.5 py-1 rounded-lg">
+              ※ 100枚超のため先頭100枚を表示中
+            </span>
+          </div>
+
+          <div id="tilesGrid" class="grid gap-2.5 sm:gap-3 bg-slate-100 p-3 sm:p-4 rounded-xl border border-slate-200/80">
+            <!-- Dynamically populated tile thumbnails -->
+          </div>
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+  <!-- Processing Overlay Modal -->
+  <div id="loadingOverlay" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl p-6 max-w-xs w-full text-center shadow-xl space-y-3">
+      <div class="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+      <p id="loadingText" class="text-sm font-bold text-slate-800">画像を分割しています...</p>
+      <p id="loadingSubText" class="text-xs text-slate-500">しばらくお待ちください</p>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-slate-200 mt-auto">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 text-center text-xs text-slate-500">
+      すべての画像処理はお使いのブラウザ内で行われ、外部サーバーへアップロードされることはありません。
+    </div>
+  </footer>
+
+  <script>
+    /**
+     * 画像等分スプリッター メインロジック
+     * 依存ライブラリ: JSZip (CDN)
+     */
+    (() => {
+      // アプリケーション状態管理
+      const state = {
+        image: null,
+        originalFileName: 'image',
+        rows: 3,
+        cols: 3,
+        format: 'image/png',
+        quality: 0.92,
+        prefix: 'split',
+        showNumbers: true,
+        whiteGrid: false,
+      };
+
+      // DOM要素の参照
+      const els = {
+        uploadSection: document.getElementById('uploadSection'),
+        workspaceSection: document.getElementById('workspaceSection'),
+        dropZone: document.getElementById('dropZone'),
+        fileInput: document.getElementById('fileInput'),
+        resetBtn: document.getElementById('resetBtn'),
+
+        rowsInput: document.getElementById('rowsInput'),
+        rowsSlider: document.getElementById('rowsSlider'),
+        decRowsBtn: document.getElementById('decRowsBtn'),
+        incRowsBtn: document.getElementById('incRowsBtn'),
+
+        colsInput: document.getElementById('colsInput'),
+        colsSlider: document.getElementById('colsSlider'),
+        decColsBtn: document.getElementById('decColsBtn'),
+        incColsBtn: document.getElementById('incColsBtn'),
+
+        presetBtns: document.querySelectorAll('.preset-btn'),
+        totalPiecesBadge: document.getElementById('totalPiecesBadge'),
+        origDimensions: document.getElementById('origDimensions'),
+        tileDimensions: document.getElementById('tileDimensions'),
+
+        formatSelect: document.getElementById('formatSelect'),
+        qualityWrapper: document.getElementById('qualityWrapper'),
+        qualitySlider: document.getElementById('qualitySlider'),
+        qualityValue: document.getElementById('qualityValue'),
+        prefixInput: document.getElementById('prefixInput'),
+        filenamePreview: document.getElementById('filenamePreview'),
+
+        downloadZipBtn: document.getElementById('downloadZipBtn'),
+        saveFolderBtn: document.getElementById('saveFolderBtn'),
+        folderSupportNote: document.getElementById('folderSupportNote'),
+
+        showNumbersToggle: document.getElementById('showNumbersToggle'),
+        gridColorToggle: document.getElementById('gridColorToggle'),
+        canvasContainer: document.getElementById('canvasContainer'),
+        previewCanvas: document.getElementById('previewCanvas'),
+        tilesGrid: document.getElementById('tilesGrid'),
+        tilePreviewNotice: document.getElementById('tilePreviewNotice'),
+
+        loadingOverlay: document.getElementById('loadingOverlay'),
+        loadingText: document.getElementById('loadingText'),
+        loadingSubText: document.getElementById('loadingSubText'),
+        toastContainer: document.getElementById('toastContainer'),
+      };
+
+      // File System Access API の対応チェック
+      const supportsDirectoryPicker = 'showDirectoryPicker' in window;
+      if (!supportsDirectoryPicker) {
+        els.folderSupportNote.textContent =
+          '※ お使いのブラウザはフォルダ直接保存に非対応のため、「フォルダを選択して直接保存」を押すと個別ファイルとして一括ダウンロードされます。';
+      }
+
+      /**
+       * トースト通知を表示する (alert()の代替)
+       */
+      function showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        const colorStyles = {
+          info: 'bg-slate-800 text-white border-slate-700',
+          success: 'bg-emerald-600 text-white border-emerald-500',
+          error: 'bg-rose-600 text-white border-rose-500',
+          warning: 'bg-amber-600 text-white border-amber-500',
+        };
+        toast.className = `pointer-events-auto px-4 py-3 rounded-xl shadow-lg border text-sm font-medium transition-all duration-300 transform translate-y-2 opacity-0 ${colorStyles[type] || colorStyles.info}`;
+        toast.textContent = message;
+        els.toastContainer.appendChild(toast);
+
+        requestAnimationFrame(() => {
+          toast.classList.remove('translate-y-2', 'opacity-0');
+        });
+
+        setTimeout(() => {
+          toast.classList.add('opacity-0', 'translate-y-2');
+          setTimeout(() => toast.remove(), 300);
+        }, 4000);
+      }
+
+      /**
+       * ローディング表示の切り替え
+       */
+      function setLoading(isLoading, text = '処理中...', subText = 'しばらくお待ちください') {
+        if (isLoading) {
+          els.loadingText.textContent = text;
+          els.loadingSubText.textContent = subText;
+          els.loadingOverlay.classList.remove('hidden');
+        } else {
+          els.loadingOverlay.classList.add('hidden');
+        }
+      }
+
+      /**
+       * フォーマットに応じた拡張子を取得
+       */
+      function getExtension(mimeType) {
+        switch (mimeType) {
+          case 'image/jpeg':
+            return 'jpg';
+          case 'image/webp':
+            return 'webp';
+          case 'image/png':
+          default:
+            return 'png';
+        }
+      }
+
+      /**
+       * ゼロ埋めフォーマット (桁数に応じて自動調整)
+       */
+      function padNumber(num, maxNum) {
+        const digits = Math.max(2, String(maxNum).length);
+        return String(num).padStart(digits, '0');
+      }
+
+      /**
+       * タイルごとのファイル名を生成
+       * 例: prefix_01_02.png (1行目2列目)
+       */
+      function buildTileFilename(rowIdx, colIdx) {
+        const safePrefix = (state.prefix || 'split').trim().replace(/[\\/:*?"<>|]/g, '_') || 'split';
+        const rStr = padNumber(rowIdx + 1, state.rows);
+        const cStr = padNumber(colIdx + 1, state.cols);
+        const ext = getExtension(state.format);
+        return `${safePrefix}_${rStr}_${cStr}.${ext}`;
+      }
+
+      /**
+       * 画像ファイルの読み込み処理
+       */
+      function handleFile(file) {
+        if (!file || !file.type.startsWith('image/')) {
+          showToast('有効な画像ファイルを選択してください。', 'error');
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            state.image = img;
+            // 拡張子を除いた元ファイル名を接頭辞の初期値に設定
+            const baseName = file.name.replace(/\.[^/.]+$/, '');
+            state.originalFileName = baseName || 'image';
+            state.prefix = state.originalFileName;
+            els.prefixInput.value = state.prefix;
+
+            // UI切り替え
+            els.uploadSection.classList.add('hidden');
+            els.workspaceSection.classList.remove('hidden');
+            els.resetBtn.classList.remove('hidden');
+
+            updateAll();
+            showToast('画像を読み込みました。', 'success');
+          };
+          img.onerror = () => {
+            showToast('画像の読み込みに失敗しました。', 'error');
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+
+      /**
+       * 分割数などのUI表示とプレビューをすべて更新
+       */
+      function updateAll() {
+        if (!state.image) return;
+
+        // 数値同期
+        els.rowsInput.value = state.rows;
+        els.rowsSlider.value = Math.min(20, state.rows);
+        els.colsInput.value = state.cols;
+        els.colsSlider.value = Math.min(20, state.cols);
+
+        // 合計枚数と解像度計算
+        const total = state.rows * state.cols;
+        els.totalPiecesBadge.textContent = `合計 ${total} 枚`;
+
+        const imgW = state.image.naturalWidth;
+        const imgH = state.image.naturalHeight;
+        els.origDimensions.textContent = `${imgW} × ${imgH} px`;
+
+        const tileW = Math.round(imgW / state.cols);
+        const tileH = Math.round(imgH / state.rows);
+        els.tileDimensions.textContent = `約 ${tileW} × ${tileH} px`;
+
+        // ファイル名プレビュー更新
+        els.filenamePreview.textContent = `出力例: ${buildTileFilename(0, 0)}`;
+
+        // プリセットボタンのアクティブ状態更新
+        els.presetBtns.forEach((btn) => {
+          const r = Number(btn.dataset.rows);
+          const c = Number(btn.dataset.cols);
+          if (r === state.rows && c === state.cols) {
+            btn.classList.add('border-indigo-500', 'bg-indigo-50', 'text-indigo-700');
+            btn.classList.remove('border-slate-200', 'text-slate-700');
+          } else {
+            btn.classList.remove('border-indigo-500', 'bg-indigo-50', 'text-indigo-700');
+            btn.classList.add('border-slate-200', 'text-slate-700');
+          }
+        });
+
+        drawGridPreview();
+        renderTileThumbnails();
+      }
+
+      /**
+       * 全体プレビューキャンバスに画像とグリッド線を描画
+       */
+      function drawGridPreview() {
+        if (!state.image) return;
+
+        const canvas = els.previewCanvas;
+        const ctx = canvas.getContext('2d');
+        const img = state.image;
+
+        // コンテナ幅に合わせて表示用解像度を決定（高DPI対応）
+        const containerWidth = els.canvasContainer.clientWidth - 32;
+        const maxDisplayWidth = Math.max(280, Math.min(containerWidth, 900));
+        const scale = Math.min(1, maxDisplayWidth / img.naturalWidth);
+
+        const displayW = Math.round(img.naturalWidth * scale);
+        const displayH = Math.round(img.naturalHeight * scale);
+
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = displayW * dpr;
+        canvas.height = displayH * dpr;
+        canvas.style.width = `${displayW}px`;
+        canvas.style.height = `${displayH}px`;
+
+        ctx.save();
+        ctx.scale(dpr, dpr);
+
+        // 元画像描画
+        ctx.drawImage(img, 0, 0, displayW, displayH);
+
+        const cellW = displayW / state.cols;
+        const cellH = displayH / state.rows;
+
+        // グリッド線描画（視認性を高めるため二重線で描画）
+        const primaryStroke = state.whiteGrid ? 'rgba(255, 255, 255, 0.9)' : 'rgba(79, 70, 229, 0.9)';
+        const shadowStroke = state.whiteGrid ? 'rgba(15, 23, 42, 0.5)' : 'rgba(255, 255, 255, 0.75)';
+
+        // 縦線
+        for (let c = 1; c < state.cols; c++) {
+          const x = Math.round(c * cellW) + 0.5;
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, displayH);
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = shadowStroke;
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, displayH);
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([6, 4]);
+          ctx.strokeStyle = primaryStroke;
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+
+        // 横線
+        for (let r = 1; r < state.rows; r++) {
+          const y = Math.round(r * cellH) + 0.5;
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(displayW, y);
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = shadowStroke;
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(displayW, y);
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([6, 4]);
+          ctx.strokeStyle = primaryStroke;
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+
+        // 番号ラベルの描画
+        if (state.showNumbers && cellW >= 24 && cellH >= 20) {
+          const fontSize = Math.max(10, Math.min(18, Math.floor(Math.min(cellW, cellH) * 0.28)));
+          ctx.font = `700 ${fontSize}px "Inter", "Noto Sans JP", sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+
+          let count = 1;
+          for (let r = 0; r < state.rows; r++) {
+            for (let c = 0; c < state.cols; c++) {
+              const cx = (c + 0.5) * cellW;
+              const cy = (r + 0.5) * cellH;
+              const label = `${count}`;
+
+              const metrics = ctx.measureText(label);
+              const badgeW = Math.max(fontSize * 1.5, metrics.width + 10);
+              const badgeH = fontSize * 1.4;
+
+              // バッジ背景
+              ctx.fillStyle = 'rgba(15, 23, 42, 0.65)';
+              ctx.beginPath();
+              ctx.roundRect(cx - badgeW / 2, cy - badgeH / 2, badgeW, badgeH, 6);
+              ctx.fill();
+
+              // テキスト
+              ctx.fillStyle = '#ffffff';
+              ctx.fillText(label, cx, cy + 0.5);
+              count++;
+            }
+          }
+        }
+
+        ctx.restore();
+      }
+
+      /**
+       * 個別タイルのサムネイル一覧を生成（デバウンス処理付き）
+       */
+      let thumbnailTimer = null;
+      function renderTileThumbnails() {
+        clearTimeout(thumbnailTimer);
+        thumbnailTimer = setTimeout(() => {
+          if (!state.image) return;
+
+          const grid = els.tilesGrid;
+          grid.innerHTML = '';
+
+          // グリッド列数を調整（画面幅と分割数に応じて見やすく配置）
+          const displayCols = Math.min(state.cols, 8);
+          grid.style.gridTemplateColumns = `repeat(${displayCols}, minmax(0, 1fr))`;
+
+          const img = state.image;
+          const imgW = img.naturalWidth;
+          const imgH = img.naturalHeight;
+
+          const maxPreviewTiles = 100;
+          const totalTiles = state.rows * state.cols;
+          els.tilePreviewNotice.classList.toggle('hidden', totalTiles <= maxPreviewTiles);
+
+          // サムネイル用縮小比率
+          const thumbMaxDim = 240;
+          let renderedCount = 0;
+
+          for (let r = 0; r < state.rows; r++) {
+            for (let c = 0; c < state.cols; c++) {
+              if (renderedCount >= maxPreviewTiles) break;
+              renderedCount++;
+
+              // ピクセルの隙間が出ないよう整数境界を計算
+              const sx = Math.round((c * imgW) / state.cols);
+              const sy = Math.round((r * imgH) / state.rows);
+              const sw = Math.round(((c + 1) * imgW) / state.cols) - sx;
+              const sh = Math.round(((r + 1) * imgH) / state.rows) - sy;
+
+              const scale = Math.min(1, thumbMaxDim / Math.max(sw, sh));
+              const tw = Math.max(1, Math.round(sw * scale));
+              const th = Math.max(1, Math.round(sh * scale));
+
+              const thumbCanvas = document.createElement('canvas');
+              thumbCanvas.width = tw;
+              thumbCanvas.height = th;
+              const tCtx = thumbCanvas.getContext('2d');
+              tCtx.drawImage(img, sx, sy, sw, sh, 0, 0, tw, th);
+
+              const card = document.createElement('button');
+              card.type = 'button';
+              card.title = `${buildTileFilename(r, c)} を個別ダウンロード`;
+              card.className =
+                'group relative bg-white rounded-lg overflow-hidden border border-slate-200 hover:border-indigo-500 shadow-xs hover:shadow-md transition flex flex-col items-center cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500';
+
+              thumbCanvas.className = 'w-full h-auto block object-contain bg-slate-50';
+              card.appendChild(thumbCanvas);
+
+              // ラベルバー
+              const labelBar = document.createElement('div');
+              labelBar.className =
+                'w-full px-1.5 py-1 bg-white border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-600 group-hover:bg-indigo-50 group-hover:text-indigo-700 transition';
+              labelBar.innerHTML = `
+                <span class="font-semibold truncate">${r + 1}-${c + 1}</span>
+                <span class="text-slate-400 group-hover:text-indigo-600">↓</span>
+              `;
+              card.appendChild(labelBar);
+
+              // クリックで単体ダウンロード
+              card.addEventListener('click', () => downloadSingleTile(r, c));
+
+              grid.appendChild(card);
+            }
+          }
+        }, 80);
+      }
+
+      /**
+       * 指定した行列のタイルをBlobとして切り出す
+       */
+      function extractTileBlob(rowIdx, colIdx) {
+        return new Promise((resolve, reject) => {
+          const img = state.image;
+          const imgW = img.naturalWidth;
+          const imgH = img.naturalHeight;
+
+          const sx = Math.round((colIdx * imgW) / state.cols);
+          const sy = Math.round((rowIdx * imgH) / state.rows);
+          const sw = Math.max(1, Math.round(((colIdx + 1) * imgW) / state.cols) - sx);
+          const sh = Math.max(1, Math.round(((rowIdx + 1) * imgH) / state.rows) - sy);
+
+          const canvas = document.createElement('canvas');
+          canvas.width = sw;
+          canvas.height = sh;
+          const ctx = canvas.getContext('2d');
+
+          // JPEGの場合は透過部分を白背景で塗りつぶす
+          if (state.format === 'image/jpeg') {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, sw, sh);
+          }
+
+          ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                resolve({
+                  blob,
+                  filename: buildTileFilename(rowIdx, colIdx),
+                });
+              } else {
+                reject(new Error('画像のエンコードに失敗しました。'));
+              }
+            },
+            state.format,
+            state.quality
+          );
+        });
+      }
+
+      /**
+       * 単一タイルのダウンロード
+       */
+      async function downloadSingleTile(rowIdx, colIdx) {
+        try {
+          const { blob, filename } = await extractTileBlob(rowIdx, colIdx);
+          triggerBlobDownload(blob, filename);
+          showToast(`${filename} をダウンロードしました。`, 'success');
+        } catch (err) {
+          console.error(err);
+          showToast('ダウンロード中にエラーが発生しました。', 'error');
+        }
+      }
+
+      /**
+       * Blobからブラウザ標準のダウンロードを実行
+       */
+      function triggerBlobDownload(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+
+      /**
+       * 全分割画像をZIPファイルとして生成・ダウンロード
+       */
+      async function handleDownloadZip() {
+        if (!state.image) return;
+        if (typeof JSZip === 'undefined') {
+          showToast('ZIPライブラリの読み込みに失敗しました。ページを再読み込みしてください。', 'error');
+          return;
+        }
+
+        const total = state.rows * state.cols;
+        setLoading(true, 'ZIPファイルを作成中...', `全 ${total} 枚の画像を生成しています`);
+
+        try {
+          const zip = new JSZip();
+          const safePrefix = (state.prefix || 'split').trim().replace(/[\\/:*?"<>|]/g, '_') || 'split';
+          const folder = zip.folder(safePrefix);
+
+          let processed = 0;
+          for (let r = 0; r < state.rows; r++) {
+            for (let c = 0; c < state.cols; c++) {
+              const { blob, filename } = await extractTileBlob(r, c);
+              folder.file(filename, blob);
+              processed++;
+              if (processed % 10 === 0 || processed === total) {
+                els.loadingSubText.textContent = `進捗: ${processed} / ${total} 枚`;
+              }
+            }
+          }
+
+          els.loadingText.textContent = 'ZIPアーカイブを圧縮中...';
+          const zipBlob = await zip.generateAsync({ type: 'blob' });
+          triggerBlobDownload(zipBlob, `${safePrefix}_${state.rows}x${state.cols}.zip`);
+
+          showToast(`ZIPファイル（${total}枚）をダウンロードしました！`, 'success');
+        } catch (err) {
+          console.error(err);
+          showToast('ZIPファイルの作成に失敗しました。', 'error');
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      /**
+       * フォルダを選択して直接保存（File System Access API + フォールバック）
+       */
+      async function handleSaveToFolder() {
+        if (!state.image) return;
+
+        const total = state.rows * state.cols;
+
+        // File System Access API 対応ブラウザの場合
+        if (supportsDirectoryPicker) {
+          try {
+            const dirHandle = await window.showDirectoryPicker({
+              mode: 'readwrite',
+            });
+
+            setLoading(true, 'フォルダへ直接保存中...', `0 / ${total} 枚完了`);
+
+            let saved = 0;
+            for (let r = 0; r < state.rows; r++) {
+              for (let c = 0; c < state.cols; c++) {
+                const { blob, filename } = await extractTileBlob(r, c);
+                const fileHandle = await dirHandle.getFileHandle(filename, { create: true });
+                const writable = await fileHandle.createWritable();
+                await writable.write(blob);
+                await writable.close();
+
+                saved++;
+                if (saved % 5 === 0 || saved === total) {
+                  els.loadingSubText.textContent = `${saved} / ${total} 枚保存完了`;
+                }
+              }
+            }
+
+            showToast(`選択したフォルダに ${total} 枚の画像を保存しました！`, 'success');
+          } catch (err) {
+            // ユーザーがフォルダ選択ダイアログをキャンセルした場合
+            if (err.name === 'AbortError') {
+              showToast('フォルダの選択がキャンセルされました。', 'info');
+            } else {
+              console.error(err);
+              showToast('フォルダへの保存中にエラーが発生しました。ZIPダウンロードをお試しください。', 'error');
+            }
+          } finally {
+            setLoading(false);
+          }
+        } else {
+          // 非対応ブラウザ向けフォールバック（個別ファイル連続ダウンロード）
+          setLoading(true, '個別ファイルをダウンロード中...', `全 ${total} 枚を順番に保存します`);
+          try {
+            for (let r = 0; r < state.rows; r++) {
+              for (let c = 0; c < state.cols; c++) {
+                const { blob, filename } = await extractTileBlob(r, c);
+                triggerBlobDownload(blob, filename);
+                // ブラウザの連続ダウンロード制限を回避するためわずかに待機
+                await new Promise((res) => setTimeout(res, 150));
+              }
+            }
+            showToast(`${total} 枚の画像のダウンロードを開始しました。`, 'success');
+          } catch (err) {
+            console.error(err);
+            showToast('ダウンロード中にエラーが発生しました。', 'error');
+          } finally {
+            setLoading(false);
+          }
+        }
+      }
+
+      /**
+       * 分割数のバリデーションと更新ヘルパー
+       */
+      function setRows(val) {
+        const clamped = Math.max(1, Math.min(50, Math.floor(Number(val) || 1)));
+        state.rows = clamped;
+        updateAll();
+      }
+
+      function setCols(val) {
+        const clamped = Math.max(1, Math.min(50, Math.floor(Number(val) || 1)));
+        state.cols = clamped;
+        updateAll();
+      }
+
+      // --- イベントリスナー登録 ---
+
+      // ドロップゾーンクリック & ファイル選択
+      els.dropZone.addEventListener('click', () => els.fileInput.click());
+      els.fileInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) {
+          handleFile(e.target.files[0]);
+        }
+      });
+
+      // ドラッグ＆ドロップ
+      ['dragenter', 'dragover'].forEach((evtName) => {
+        els.dropZone.addEventListener(evtName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          els.dropZone.classList.add('border-indigo-500', 'bg-indigo-50/40');
+        });
+      });
+
+      ['dragleave', 'drop'].forEach((evtName) => {
+        els.dropZone.addEventListener(evtName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          els.dropZone.classList.remove('border-indigo-500', 'bg-indigo-50/40');
+        });
+      });
+
+      els.dropZone.addEventListener('drop', (e) => {
+        const files = e.dataTransfer?.files;
+        if (files && files[0]) {
+          handleFile(files[0]);
+        }
+      });
+
+      // クリップボードからの画像ペースト (Ctrl+V / Cmd+V)
+      window.addEventListener('paste', (e) => {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+        for (const item of items) {
+          if (item.type.startsWith('image/')) {
+            const file = item.getAsFile();
+            if (file) handleFile(file);
+            break;
+          }
+        }
+      });
+
+      // リセット（別の画像を選択）
+      els.resetBtn.addEventListener('click', () => {
+        els.fileInput.value = '';
+        els.fileInput.click();
+      });
+
+      // 行（縦）コントロール
+      els.rowsInput.addEventListener('input', (e) => setRows(e.target.value));
+      els.rowsSlider.addEventListener('input', (e) => setRows(e.target.value));
+      els.decRowsBtn.addEventListener('click', () => setRows(state.rows - 1));
+      els.incRowsBtn.addEventListener('click', () => setRows(state.rows + 1));
+
+      // 列（横）コントロール
+      els.colsInput.addEventListener('input', (e) => setCols(e.target.value));
+      els.colsSlider.addEventListener('input', (e) => setCols(e.target.value));
+      els.decColsBtn.addEventListener('click', () => setCols(state.cols - 1));
+      els.incColsBtn.addEventListener('click', () => setCols(state.cols + 1));
+
+      // プリセットボタン
+      els.presetBtns.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          state.rows = Number(btn.dataset.rows);
+          state.cols = Number(btn.dataset.cols);
+          updateAll();
+        });
+      });
+
+      // 出力フォーマット・画質・ファイル名設定
+      els.formatSelect.addEventListener('change', (e) => {
+        state.format = e.target.value;
+        const showQuality = state.format === 'image/jpeg' || state.format === 'image/webp';
+        els.qualityWrapper.classList.toggle('hidden', !showQuality);
+        els.filenamePreview.textContent = `出力例: ${buildTileFilename(0, 0)}`;
+      });
+
+      els.qualitySlider.addEventListener('input', (e) => {
+        const val = Number(e.target.value);
+        state.quality = val / 100;
+        els.qualityValue.textContent = `${val}%`;
+      });
+
+      els.prefixInput.addEventListener('input', (e) => {
+        state.prefix = e.target.value;
+        els.filenamePreview.textContent = `出力例: ${buildTileFilename(0, 0)}`;
+      });
+
+      // プレビュー表示オプション
+      els.showNumbersToggle.addEventListener('change', (e) => {
+        state.showNumbers = e.target.checked;
+        drawGridPreview();
+      });
+
+      els.gridColorToggle.addEventListener('change', (e) => {
+        state.whiteGrid = e.target.checked;
+        drawGridPreview();
+      });
+
+      // ダウンロード実行ボタン
+      els.downloadZipBtn.addEventListener('click', handleDownloadZip);
+      els.saveFolderBtn.addEventListener('click', handleSaveToFolder);
+
+      // ウィンドウリサイズ時にキャンバスを再描画
+      let resizeTimer = null;
+      window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+          if (state.image) drawGridPreview();
+        }, 120);
+      });
+    })();
+  </script>
+</body>
+</html>
