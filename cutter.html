@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ゲージ分割</title></head>
+<body style="font-family:sans-serif;padding:20px;">
+<h3>大次郎4 リザルトゲージ分割ツール</h3>
+<p>normagauge.png (横10×縦4) を選択：</p>
+<input type="file" id="f" accept="image/*"><br><br>
+<div id="out"></div>
+<script>
+document.getElementById('f').onchange = function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const img = new Image();
+  img.onload = function() {
+    const cw = Math.floor(img.width / 10);
+    const ch = Math.floor(img.height / 4);
+    const out = document.getElementById('out');
+    out.innerHTML = '<p>画像を長押しして「写真に保存」または「ファイルに保存」してください：</p>';
+    const add = (label, row, col) => {
+      const c = document.createElement('canvas');
+      c.width = cw; c.height = ch;
+      c.getContext('2d').drawImage(img, col*cw, row*ch, cw, ch, 0, 0, cw, ch);
+      const a = document.createElement('a');
+      a.href = c.toDataURL('image/png');
+      a.download = label;
+      a.textContent = '📥 ' + label + ' をダウンロード';
+      a.style.display = 'block';
+      a.style.margin = '8px 0';
+      out.appendChild(a);
+    };
+    add('base.png', 0, 0);
+    add('fill.png', 1, 0);
+    const cBlank = document.createElement('canvas');
+    cBlank.width = cw; cBlank.height = ch;
+    const aBlank = document.createElement('a');
+    aBlank.href = cBlank.toDataURL('image/png');
+    aBlank.download = 'line.png';
+    aBlank.textContent = '📥 line.png (透明枠) をダウンロード';
+    aBlank.style.display = 'block';
+    aBlank.style.margin = '8px 0';
+    out.appendChild(aBlank);
+    for (let i = 0; i < 10; i++) {
+      const name = (i < 10 ? '0' + i : i) + '.png';
+      add(name, 3, i);
+    }
+  };
+  img.src = URL.createObjectURL(file);
+};
+</script>
+</body>
+</html>
